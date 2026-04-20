@@ -1615,7 +1615,7 @@
 
 
 -->
-
+<!--
 
 <!DOCTYPE html>
 <html lang="en">
@@ -3361,5 +3361,3536 @@
   </script>
 </body>
 </html>
+
+
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tata Technologies | BI Timesheet View</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0b1630;
+      --surface: rgba(10, 21, 42, 0.72);
+      --surface-2: rgba(255, 255, 255, 0.06);
+      --surface-3: rgba(255,255,255,0.1);
+      --card: rgba(8, 19, 38, 0.74);
+      --line: rgba(148, 163, 184, 0.18);
+      --line-2: rgba(255, 255, 255, 0.08);
+      --text: #eef6ff;
+      --muted: #9bb0cc;
+      --muted-2: #c6d6ea;
+      --brand: #3aa8ff;
+      --brand-2: #7f5cff;
+      --brand-3: #24e1c5;
+      --glow: 0 22px 70px rgba(15, 77, 175, 0.28);
+      --shadow: 0 24px 65px rgba(2, 9, 22, 0.45);
+      --radius: 28px;
+      --radius-sm: 20px;
+      --success: #32d296;
+      --warning: #f5b445;
+      --danger: #ff6b8a;
+      --table-scroll-track: rgba(122, 171, 208, 0.14);
+      --table-scroll-thumb: linear-gradient(180deg, rgba(146, 221, 255, 0.95), rgba(65, 164, 242, 0.95));
+      --table-scroll-thumb-hover: linear-gradient(180deg, rgba(186, 234, 255, 0.98), rgba(89, 182, 255, 0.98));
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      min-height: 100%;
+      scroll-behavior: smooth;
+    }
+
+    body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(58,168,255,0.20), transparent 24%),
+        radial-gradient(circle at 100% 0%, rgba(127,92,255,0.18), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(36,225,197,0.12), transparent 26%),
+        linear-gradient(180deg, #050b16 0%, #07111f 42%, #0b1630 100%);
+      overflow-x: hidden;
+      overscroll-behavior-y: contain;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    #threeBackdrop {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.42;
+      transform: translateZ(0);
+      contain: strict;
+      transition: opacity 0.18s ease;
+      will-change: opacity;
+    }
+
+    .upload-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(58,168,255,0.18), transparent 28%),
+        radial-gradient(circle at 42% 58%, rgba(36,225,197,0.10), transparent 24%),
+        rgba(3, 9, 19, 0.76);
+      backdrop-filter: blur(22px) saturate(1.22);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.24s ease, visibility 0.24s ease;
+    }
+
+    .upload-loader.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .loader-panel {
+      width: min(460px, 100%);
+      position: relative;
+      overflow: hidden;
+      padding: 30px;
+      border-radius: 32px;
+      border: 1px solid rgba(141,216,255,0.18);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.075), transparent 28%),
+        linear-gradient(145deg, rgba(9, 20, 39, 0.96), rgba(10, 26, 50, 0.88));
+      box-shadow:
+        0 34px 90px rgba(2, 9, 22, 0.70),
+        0 0 70px rgba(58,168,255,0.16),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+      text-align: center;
+    }
+
+    .loader-panel::before {
+      content: '';
+      position: absolute;
+      inset: -45% -20% auto;
+      height: 230px;
+      background: conic-gradient(from 120deg, transparent, rgba(58,168,255,0.34), rgba(36,225,197,0.30), rgba(127,92,255,0.24), transparent);
+      filter: blur(22px);
+      opacity: 0.78;
+      animation: loaderSweep 4.4s linear infinite;
+    }
+
+    .loader-panel::after {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.7), transparent 72%);
+    }
+
+    @keyframes loaderSweep {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 18px;
+      justify-items: center;
+    }
+
+    .loader-core {
+      width: 132px;
+      height: 132px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      background:
+        radial-gradient(circle, rgba(141,216,255,0.20), rgba(58,168,255,0.08) 38%, transparent 66%),
+        rgba(255,255,255,0.025);
+      box-shadow:
+        0 0 0 1px rgba(141,216,255,0.16),
+        0 0 0 12px rgba(58,168,255,0.045),
+        0 24px 58px rgba(2, 9, 22, 0.42);
+    }
+
+    .loader-core::before,
+    .loader-core::after,
+    .loader-ring {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+
+    .loader-core::before {
+      inset: 0;
+      border-top-color: rgba(141,216,255,0.95);
+      border-right-color: rgba(36,225,197,0.70);
+      border-bottom-color: rgba(127,92,255,0.24);
+      animation: loaderSpin 1.8s cubic-bezier(.45,.1,.2,1) infinite;
+    }
+
+    .loader-core::after {
+      inset: 16px;
+      border-left-color: rgba(127,92,255,0.72);
+      border-bottom-color: rgba(58,168,255,0.42);
+      animation: loaderSpin 2.6s linear infinite reverse;
+    }
+
+    .loader-ring {
+      inset: 32px;
+      border-top-color: rgba(36,225,197,0.84);
+      border-right-color: rgba(58,168,255,0.38);
+      animation: loaderSpin 1.25s linear infinite;
+    }
+
+    @keyframes loaderSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 21px;
+      font-weight: 900;
+      background:
+        linear-gradient(145deg, rgba(58,168,255,0.92), rgba(36,225,197,0.80)),
+        rgba(255,255,255,0.08);
+      box-shadow:
+        0 0 34px rgba(58,168,255,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+      animation: loaderPulse 1.25s ease-in-out infinite alternate;
+    }
+
+    @keyframes loaderPulse {
+      to { transform: scale(1.08); box-shadow: 0 0 46px rgba(36,225,197,0.50), inset 0 1px 0 rgba(255,255,255,0.26); }
+    }
+
+    .loader-chip-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: -4px;
+    }
+
+    .loader-chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.055);
+      color: #d8eaff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      animation: chipFloat 1.9s ease-in-out infinite;
+    }
+
+    .loader-chip:nth-child(2) { animation-delay: 0.16s; }
+    .loader-chip:nth-child(3) { animation-delay: 0.32s; }
+
+    @keyframes chipFloat {
+      0%, 100% { transform: translateY(0); opacity: 0.72; }
+      50% { transform: translateY(-3px); opacity: 1; }
+    }
+
+    .loader-title {
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .loader-detail {
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.7;
+      min-height: 22px;
+    }
+
+    .loader-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .loader-fill {
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, transparent, var(--brand), var(--brand-3), rgba(127,92,255,0.92), transparent);
+      box-shadow: 0 0 26px rgba(58,168,255,0.46);
+      animation: loaderBar 1.36s cubic-bezier(.45,.1,.2,1) infinite;
+    }
+
+    @keyframes loaderBar {
+      0% { transform: translateX(-115%); }
+      100% { transform: translateX(250%); }
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      transform: translateZ(0);
+    }
+
+    body::before {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.35), transparent 70%);
+    }
+
+    body::after {
+      background:
+        radial-gradient(circle at 15% 20%, rgba(58,168,255,0.16), transparent 10%),
+        radial-gradient(circle at 82% 12%, rgba(127,92,255,0.18), transparent 12%),
+        radial-gradient(circle at 50% 70%, rgba(36,225,197,0.10), transparent 10%);
+      filter: blur(14px);
+      opacity: 0.62;
+    }
+
+    body.buttery-mode #threeBackdrop {
+      display: none;
+    }
+
+    body.buttery-mode::after {
+      filter: blur(10px);
+      opacity: 0.52;
+    }
+
+    body.buttery-mode .hero::before,
+    body.buttery-mode .hero::after,
+    body.buttery-mode .pulse {
+      animation: none !important;
+    }
+
+    body.buttery-mode .topbar,
+    body.buttery-mode .micro-pill,
+    body.buttery-mode .chip,
+    body.buttery-mode .pill,
+    body.buttery-mode .card,
+    body.buttery-mode .compliance-table thead th {
+      backdrop-filter: none;
+    }
+
+    body.buttery-mode .card,
+    body.buttery-mode .stat-card,
+    body.buttery-mode .btn,
+    body.buttery-mode .search-icon {
+      transition: none;
+    }
+
+    body.buttery-mode section.card,
+    body.buttery-mode .visual-card {
+      content-visibility: auto;
+      contain-intrinsic-size: 520px;
+    }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 18px 72px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding: 14px 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line-2);
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(58,168,255,0.98), rgba(127,92,255,0.98));
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(74, 126, 255, 0.32);
+    }
+
+    .brand-title { font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
+    .brand-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .topbar-right,
+    .toolbar-side,
+    .actions,
+    .switches {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .micro-pill, .chip, .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      backdrop-filter: blur(5px);
+      white-space: nowrap;
+    }
+
+    .micro-pill .dot, .hero-eyebrow .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-3));
+      box-shadow: 0 0 0 6px rgba(58,168,255,0.14);
+      flex: 0 0 auto;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 34px;
+      border-radius: 34px;
+      background:
+        linear-gradient(140deg, rgba(8, 19, 38, 0.92), rgba(8, 24, 49, 0.72) 50%, rgba(18, 58, 118, 0.72) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+      isolation: isolate;
+    }
+
+    .hero::before, .hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(12px);
+      opacity: 0.85;
+      z-index: -1;
+    }
+
+    .hero::before {
+      width: 360px;
+      height: 360px;
+      right: -100px;
+      top: -140px;
+      background: radial-gradient(circle, rgba(58,168,255,0.46), transparent 60%);
+      animation: floaty 8s ease-in-out infinite;
+    }
+
+    .hero::after {
+      width: 300px;
+      height: 300px;
+      left: -70px;
+      bottom: -120px;
+      background: radial-gradient(circle, rgba(127,92,255,0.36), transparent 60%);
+      animation: floaty 10s ease-in-out infinite reverse;
+    }
+
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(18px); }
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.95fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .hero-copy { display: flex; flex-direction: column; justify-content: space-between; gap: 20px; }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d8eaff;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(34px, 4.7vw, 62px);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      max-width: 780px;
+    }
+
+    .hero h1 .shine {
+      background: linear-gradient(90deg, #ffffff 0%, #8dd8ff 45%, #cbb9ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-copy p {
+      margin: 14px 0 0;
+      max-width: 760px;
+      color: #c9daf0;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .hero-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .hero-side {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      min-height: 100%;
+    }
+
+    .hero-spotlight,
+    .hero-mini {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .hero-spotlight {
+      padding: 20px;
+      border-radius: 26px;
+    }
+
+    .hero-spotlight::after {
+      content: '';
+      position: absolute;
+      inset: auto -10% -40% auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(36,225,197,0.26), transparent 62%);
+    }
+
+    .hero-spotlight .small,
+    .hero-mini .label,
+    .stat-label,
+    .meta-card .title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    .hero-spotlight .small { color: #a9c0db; }
+    .hero-spotlight .big { margin-top: 10px; font-size: 34px; font-weight: 900; letter-spacing: -0.05em; }
+    .hero-spotlight .sub { margin-top: 8px; color: #cbd8ea; font-size: 13px; line-height: 1.7; }
+
+    .hero-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 14px;
+    }
+
+    .hero-mini {
+      padding: 18px;
+      border-radius: 24px;
+      min-height: 118px;
+    }
+
+    .hero-mini::before {
+      content: '';
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      right: -35px;
+      top: -35px;
+      background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%);
+    }
+
+    .hero-mini .label { color: #9eb6d5; }
+    .hero-mini .value { margin-top: 12px; font-size: 28px; font-weight: 900; letter-spacing: -0.04em; }
+    .hero-mini .sub { margin-top: 8px; color: #bdd0e6; font-size: 12px; }
+
+    .app-shell { display: grid; gap: 22px; }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      padding: 24px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(9, 20, 39, 0.84), rgba(9, 20, 39, 0.74));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 18px 42px rgba(2, 9, 22, 0.36);
+      backdrop-filter: blur(7px);
+      transition: transform 0.26s ease, box-shadow 0.26s ease, border-color 0.26s ease;
+      animation: fadeInUp 0.6s ease-out;
+      backface-visibility: hidden;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 32px 80px rgba(2, 9, 22, 0.55);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 26%);
+      pointer-events: none;
+    }
+
+    .section-head, .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-head h2, .toolbar h2 { margin: 0; font-size: 24px; letter-spacing: -0.03em; }
+    .section-subtitle { margin-top: 6px; font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    .upload-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.88fr) minmax(420px, 1.12fr);
+      gap: 20px;
+      align-items: stretch;
+      position: relative;
+      z-index: 1;
+    }
+
+    .dropzone {
+      position: relative;
+      overflow: hidden;
+      min-height: 392px;
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 30px;
+      border: 1.5px dashed rgba(98, 182, 255, 0.42);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(58,168,255,0.18), transparent 38%),
+        radial-gradient(circle at 100% 100%, rgba(36,225,197,0.11), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.032));
+      transition: all 0.4s ease;
+      cursor: pointer;
+    }
+
+    .dropzone::before {
+      content: '';
+      position: absolute;
+      inset: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      pointer-events: none;
+    }
+
+    .dropzone::after {
+      content: '';
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      right: -70px;
+      bottom: -80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(127,92,255,0.22), transparent 66%);
+      pointer-events: none;
+    }
+
+    .dropzone.dragover, .dropzone:hover {
+      transform: translateY(-4px) scale(1.02);
+      border-color: rgba(98, 182, 255, 0.75);
+      box-shadow: var(--glow), 0 20px 40px rgba(58,168,255,0.15);
+      background:
+        radial-gradient(circle at top, rgba(58,168,255,0.15), transparent 40%),
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+    }
+
+    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    .drop-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      max-width: 430px;
+    }
+
+    .drop-icon {
+      width: 94px;
+      height: 94px;
+      border-radius: 26px;
+      display: grid;
+      place-items: center;
+      font-size: 38px;
+      background: linear-gradient(145deg, rgba(58,168,255,0.18), rgba(127,92,255,0.18));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .dropzone h3 { margin: 0; font-size: 28px; letter-spacing: -0.03em; }
+    .dropzone p { margin: 0; font-size: 14px; line-height: 1.8; color: var(--muted-2); }
+
+    .drop-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 9px;
+      margin-top: 6px;
+    }
+
+    .drop-meta span {
+      padding: 8px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.055);
+      color: #cfe0f3;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .control-grid {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.028)),
+        rgba(255,255,255,0.02);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.055);
+    }
+
+    .control-kicker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-bottom: 2px;
+    }
+
+    .control-kicker .title {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d8eaff;
+    }
+
+    .control-kicker .hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .fields-grid { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 14px; }
+
+    .field {
+      position: relative;
+      min-width: 0;
+    }
+
+    .field:nth-child(1) { grid-column: span 6; }
+    .field:nth-child(2),
+    .field:nth-child(3),
+    .field:nth-child(4),
+    .field:nth-child(5) { grid-column: span 3; }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      color: #cad9ec;
+    }
+
+    .field input,
+    .field select,
+    .search-input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      outline: none;
+      font-size: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: 0.2s ease;
+    }
+
+    .field input::placeholder, .search-input::placeholder { color: #84a0c2; }
+
+    .field input:focus,
+    .field select:focus,
+    .search-input:focus {
+      border-color: rgba(58,168,255,0.48);
+      box-shadow: 0 0 0 4px rgba(58,168,255,0.12);
+      background: rgba(255,255,255,0.08);
+    }
+
+    option { background: #0b1630; color: var(--text); }
+
+    .switch-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 15px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      font-size: 13px;
+      color: #dbe8f7;
+      font-weight: 600;
+    }
+
+    .switch-pill input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+
+    .upload-layout .actions {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
+
+    .upload-layout .actions .btn {
+      width: 100%;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      min-height: 50px;
+      padding: 13px 18px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      color: white;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+    }
+
+    .btn-icon {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-label {
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .btn:hover::before { opacity: 1; }
+    .btn:hover { transform: translateY(-3px); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
+      box-shadow: 0 14px 30px rgba(71, 119, 255, 0.30);
+    }
+
+    .btn-dark {
+      background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08));
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #fff;
+    }
+
+    .btn-light {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #dfe9f7;
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08));
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #f2f8ff;
+      box-shadow:
+        0 12px 28px rgba(5, 14, 32, 0.38),
+        inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+
+    .btn-export:hover {
+      border-color: rgba(141,216,255,0.38);
+      box-shadow:
+        0 14px 30px rgba(5, 14, 32, 0.44),
+        inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .status-box {
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background:
+        linear-gradient(90deg, rgba(36,225,197,0.08), transparent 42%),
+        rgba(255,255,255,0.04);
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #e4eefb; }
+
+    .pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand-3);
+      box-shadow: 0 0 0 0 rgba(36,225,197,0.5);
+      animation: pulse 1.8s infinite;
+      flex: 0 0 auto;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(36,225,197,0.45); }
+      70% { box-shadow: 0 0 0 12px rgba(36,225,197,0); }
+      100% { box-shadow: 0 0 0 0 rgba(36,225,197,0); }
+    }
+
+    .helper-note { font-size: 13px; line-height: 1.7; color: var(--muted); }
+    .message-stack { display: grid; gap: 10px; }
+
+    .message {
+      padding: 13px 15px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.6;
+      border: 1px solid transparent;
+    }
+
+    .message.error { background: rgba(255,107,138,0.10); color: #ffc7d3; border-color: rgba(255,107,138,0.18); }
+    .message.success { background: rgba(50,210,150,0.10); color: #bff7df; border-color: rgba(50,210,150,0.18); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 132px;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      right: -28px;
+      top: -28px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(58,168,255,0.18), transparent 68%);
+    }
+
+    .stat-label { color: #92accb; margin-bottom: 18px; }
+    .stat-value { font-size: clamp(24px, 2vw, 36px); font-weight: 900; letter-spacing: -0.05em; position: relative; z-index: 1; }
+    .stat-note { margin-top: 10px; color: #bdd0e6; font-size: 12px; position: relative; z-index: 1; line-height: 1.6; }
+
+    .bi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .visual-card {
+      position: relative;
+      z-index: 1;
+      min-height: 330px;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      overflow: hidden;
+      contain: layout paint;
+    }
+
+    .visual-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .visual-title h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .donut-layout {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .donut {
+      width: 210px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--danger) 0deg, var(--danger) 0deg, rgba(255,255,255,0.08) 0deg 360deg);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        0 20px 50px rgba(2, 9, 22, 0.35);
+    }
+
+    .donut::after {
+      content: attr(data-total);
+      width: 116px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, rgba(9, 20, 39, 0.98), rgba(12, 30, 56, 0.98));
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .legend { display: grid; gap: 12px; }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 14px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted-2);
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 12px;
+      padding: 6px 8px;
+      transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    }
+
+    .legend-row:hover {
+      transform: translateX(2px);
+      background: rgba(255,255,255,0.05);
+      color: #f0f8ff;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.04);
+    }
+
+    .bar-list,
+    .risk-list {
+      display: grid;
+      gap: 13px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 112px 1fr 74px;
+      gap: 12px;
+      align-items: center;
+      color: #d9e9f8;
+      font-size: 13px;
+      font-weight: 800;
+      border-radius: 14px;
+      padding: 4px 6px;
+      transition: transform 0.18s ease, background-color 0.18s ease;
+    }
+
+    .bar-row:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .bar-track {
+      height: 18px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .bar-row:hover .bar-track,
+    .pareto-row:hover .bar-track {
+      border-color: rgba(141, 216, 255, 0.4);
+      box-shadow: inset 0 0 0 1px rgba(141, 216, 255, 0.18);
+    }
+
+    .bar-fill {
+      height: 100%;
+      min-width: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-3));
+      box-shadow: 0 8px 22px rgba(58,168,255,0.24);
+      transform-origin: left center;
+      transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .bar-row:hover .bar-fill,
+    .pareto-row:hover .bar-fill {
+      transform: scaleY(1.09);
+      filter: brightness(1.12);
+      box-shadow: 0 10px 24px rgba(141,216,255,0.34);
+    }
+
+    .gauge-wrap {
+      display: grid;
+      place-items: center;
+      gap: 14px;
+      min-height: 236px;
+    }
+
+    .gauge {
+      width: min(280px, 100%);
+      aspect-ratio: 2 / 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gauge-arc {
+      position: absolute;
+      inset: 0;
+      border-radius: 280px 280px 0 0;
+      background: conic-gradient(from 270deg, var(--danger) 0deg, var(--warning) 62deg, var(--success) 126deg, rgba(255,255,255,0.08) 126deg 180deg);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 20px 50px rgba(2, 9, 22, 0.35);
+    }
+
+    .gauge-arc::after {
+      content: '';
+      position: absolute;
+      left: 14%;
+      right: 14%;
+      bottom: -2px;
+      height: 72%;
+      border-radius: 220px 220px 0 0;
+      background: linear-gradient(180deg, rgba(9, 20, 39, 0.98), rgba(12, 30, 56, 0.98));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 0;
+    }
+
+    .gauge-needle {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 4px;
+      height: 82%;
+      border-radius: 999px;
+      background: #f7fbff;
+      transform: translateX(-50%) rotate(var(--needle-angle, -90deg));
+      transform-origin: bottom center;
+      box-shadow: 0 0 20px rgba(141,216,255,0.55);
+      z-index: 2;
+      transition: transform 0.5s ease;
+    }
+
+    .gauge-center {
+      position: absolute;
+      left: 50%;
+      bottom: -7px;
+      width: 24px;
+      aspect-ratio: 1;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-3));
+      z-index: 3;
+      box-shadow: 0 0 0 8px rgba(58,168,255,0.12);
+    }
+
+    .gauge-value {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .gauge-caption {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .waterfall {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      align-items: end;
+      min-height: 238px;
+      padding-top: 12px;
+    }
+
+    .waterfall-step {
+      display: grid;
+      align-content: end;
+      gap: 10px;
+      min-height: 218px;
+      border-radius: 16px;
+      padding: 4px 6px 8px;
+      transition: transform 0.18s ease, background-color 0.18s ease;
+    }
+
+    .waterfall-step:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .waterfall-bar {
+      min-height: 4px;
+      border-radius: 18px 18px 6px 6px;
+      background: linear-gradient(180deg, var(--brand), var(--brand-3));
+      box-shadow: 0 14px 34px rgba(58,168,255,0.22);
+      transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .waterfall-step:hover .waterfall-bar {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+      box-shadow: 0 16px 34px rgba(58,168,255,0.3);
+    }
+
+    .waterfall-bar.expected { background: linear-gradient(180deg, var(--brand-2), var(--brand)); }
+    .waterfall-bar.shortfall { background: linear-gradient(180deg, var(--danger), var(--warning)); }
+
+    .waterfall-label {
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .pareto-list {
+      display: grid;
+      gap: 11px;
+      max-height: 248px;
+      overflow: auto;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(110, 196, 255, 0.95) rgba(122, 171, 208, 0.14);
+    }
+
+    .pareto-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) 1.4fr 64px;
+      gap: 12px;
+      align-items: center;
+      color: #d9e9f8;
+      font-size: 13px;
+      font-weight: 800;
+      border-radius: 14px;
+      padding: 4px 6px;
+      transition: transform 0.18s ease, background-color 0.18s ease;
+    }
+
+    .pareto-row:hover {
+      transform: translateX(2px);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .pareto-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .matrix {
+      position: relative;
+      min-height: 248px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        rgba(255,255,255,0.035);
+      background-size: 25% 25%;
+      overflow: hidden;
+    }
+
+    .matrix::before,
+    .matrix::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,0.13);
+    }
+
+    .matrix::before { left: 50%; top: 0; bottom: 0; width: 1px; }
+    .matrix::after { left: 0; right: 0; top: 50%; height: 1px; }
+
+    .matrix-dot {
+      position: absolute;
+      width: var(--dot-size, 16px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      left: var(--x, 50%);
+      bottom: var(--y, 50%);
+      transform: translate(-50%, 50%);
+      background: linear-gradient(135deg, var(--danger), var(--warning));
+      border: 1px solid rgba(255,255,255,0.34);
+      box-shadow: 0 10px 26px rgba(255,107,138,0.28);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+      cursor: pointer;
+    }
+
+    .matrix-dot:hover {
+      transform: translate(-50%, 50%) scale(1.18);
+      filter: brightness(1.08);
+      box-shadow: 0 14px 32px rgba(255,107,138,0.42);
+      z-index: 3;
+    }
+
+    .matrix-label {
+      position: absolute;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .matrix-label.x { right: 12px; bottom: 10px; }
+    .matrix-label.y { left: 12px; top: 10px; }
+
+    .risk-list {
+      max-height: 282px;
+      overflow: auto;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(110, 196, 255, 0.95) rgba(122, 171, 208, 0.14);
+    }
+
+    .risk-list::-webkit-scrollbar { width: 10px; }
+    .risk-list::-webkit-scrollbar-track { background: var(--table-scroll-track); border-radius: 999px; }
+    .risk-list::-webkit-scrollbar-thumb { background: var(--table-scroll-thumb); border-radius: 999px; border: 2px solid rgba(8, 24, 49, 0.82); }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 13px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+    }
+
+    .risk-item:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+    }
+
+    [data-tip] {
+      cursor: pointer;
+    }
+
+    .chart-tooltip {
+      position: fixed;
+      z-index: 50;
+      max-width: min(320px, calc(100vw - 24px));
+      pointer-events: none;
+      padding: 8px 11px;
+      border-radius: 12px;
+      border: 1px solid rgba(141,216,255,0.28);
+      background: linear-gradient(180deg, rgba(7, 21, 43, 0.95), rgba(7, 18, 37, 0.95));
+      color: #eaf5ff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+      box-shadow: 0 16px 34px rgba(2, 9, 22, 0.5);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    .chart-tooltip.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .risk-name { font-weight: 900; color: #f4f9ff; word-break: break-word; }
+    .risk-meta { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .risk-hours { color: #ffd7e0; font-weight: 900; white-space: nowrap; }
+
+    .table-shell {
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(134, 197, 232, 0.22);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        rgba(255,255,255,0.02);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      position: relative;
+      z-index: 1;
+    }
+
+    .table-controls {
+      display: grid;
+      grid-template-columns: minmax(240px, 420px) auto;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px;
+      border-bottom: 1px solid rgba(141,206,241,0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025));
+    }
+
+    .table-controls .search-input {
+      height: 46px;
+      min-width: 0;
+      border-radius: 16px;
+    }
+
+    .search-wrap {
+      position: relative;
+      min-width: 0;
+    }
+
+    .search-wrap::after {
+      content: '';
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 6px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4285f4, #34a853, #fbbc05, #ea4335);
+      opacity: 0;
+      transform: scaleX(0.35);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      transform-origin: left center;
+      pointer-events: none;
+    }
+
+    .search-wrap:focus-within::after,
+    .search-wrap.has-value::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      width: 20px;
+      height: 20px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      filter: drop-shadow(0 0 10px rgba(58,168,255,0.16));
+      transition: transform 0.25s ease, filter 0.25s ease;
+    }
+
+    .search-wrap:focus-within .search-icon,
+    .search-wrap.has-value .search-icon {
+      transform: translateY(-50%) scale(1.08) rotate(-6deg);
+      filter: drop-shadow(0 0 14px rgba(58,168,255,0.34));
+    }
+
+    .search-wrap .search-input {
+      padding-left: 48px;
+      background:
+        linear-gradient(90deg, rgba(66,133,244,0.08), transparent 32%),
+        rgba(255,255,255,0.06);
+    }
+
+    .search-wrap .search-input:focus {
+      background:
+        linear-gradient(90deg, rgba(66,133,244,0.13), rgba(52,168,83,0.07), transparent 56%),
+        rgba(255,255,255,0.08);
+    }
+
+    .table-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .table-actions .btn {
+      min-height: 46px;
+      padding: 11px 15px;
+      border-radius: 16px;
+      white-space: nowrap;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      scrollbar-gutter: stable;
+      overscroll-behavior: contain;
+      max-height: 640px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(110, 196, 255, 0.95) rgba(122, 171, 208, 0.14);
+    }
+
+    .table-scroll::-webkit-scrollbar { width: 12px; height: 12px; }
+    .table-scroll::-webkit-scrollbar-track {
+      background: var(--table-scroll-track);
+      border-radius: 999px;
+      border: 1px solid rgba(145, 194, 229, 0.14);
+      margin: 10px;
+    }
+    .table-scroll::-webkit-scrollbar-thumb {
+      background: var(--table-scroll-thumb);
+      border-radius: 999px;
+      border: 2px solid rgba(8, 24, 49, 0.82);
+      box-shadow: 0 2px 10px rgba(29, 119, 196, 0.45);
+    }
+    .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--table-scroll-thumb-hover); }
+    .table-scroll::-webkit-scrollbar-corner { background: transparent; }
+
+    .compliance-table {
+      width: 100%;
+      min-width: 1180px;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .compliance-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 15px 18px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #d6e8fb;
+      background: linear-gradient(180deg, rgba(7,29,53,0.98), rgba(8,33,58,0.94));
+      border-bottom: 1px solid rgba(141,206,241,0.25);
+      backdrop-filter: blur(5px);
+      font-weight: 800;
+    }
+
+    .compliance-table col:nth-child(1) { width: 150px; }
+    .compliance-table col:nth-child(2) { width: 290px; }
+    .compliance-table col:nth-child(3) { width: 150px; }
+    .compliance-table col:nth-child(4) { width: 160px; }
+    .compliance-table col:nth-child(5) { width: 170px; }
+    .compliance-table col:nth-child(6) { width: 130px; }
+    .compliance-table col:nth-child(7) { width: 130px; }
+
+    .compliance-table thead th:nth-child(4),
+    .compliance-table thead th:nth-child(5),
+    .compliance-table thead th:nth-child(6),
+    .compliance-table tbody td:nth-child(4),
+    .compliance-table tbody td:nth-child(5),
+    .compliance-table tbody td:nth-child(6) {
+      text-align: center;
+    }
+
+    .compliance-table thead th:nth-child(7),
+    .compliance-table tbody td:nth-child(7) {
+      text-align: center;
+    }
+
+    .compliance-table thead th:first-child { border-top-left-radius: 16px; }
+    .compliance-table thead th:last-child { border-top-right-radius: 16px; }
+
+    .compliance-table tbody td {
+      padding: 14px 18px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(149,197,229,0.12);
+      color: #eef4fc;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .compliance-table tbody tr { transition: background-color 0.2s ease, transform 0.2s ease; }
+    .compliance-table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.01); }
+    .compliance-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
+    .compliance-table tbody tr:hover {
+      background: linear-gradient(90deg, rgba(31,182,255,0.13), rgba(11,207,168,0.09));
+    }
+    .compliance-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 rgba(31,182,255,0.9); }
+    .compliance-table td.id-cell { font-weight: 700; color: #dbecff; letter-spacing: 0.01em; }
+    .compliance-table td.name-cell { font-weight: 600; color: #f4f9ff; }
+    .compliance-table td.team-cell { color: #bee5f5; }
+    .compliance-table td.num-cell { text-align: center; font-feature-settings: "tnum"; color: #d9e9f8; }
+    .compliance-table td.status-cell { text-align: center; }
+
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      border: 1px solid transparent;
+      min-width: 98px;
+    }
+
+    .status-danger { color: #ffd7e0; background: rgba(255,107,138,0.16); border-color: rgba(255,107,138,0.3); }
+    .status-warning { color: #ffe3ad; background: rgba(245,180,69,0.18); border-color: rgba(245,180,69,0.3); }
+    .status-success { color: #cbfbe5; background: rgba(50,210,150,0.18); border-color: rgba(50,210,150,0.28); }
+
+    .empty { padding: 32px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    .footer {
+      text-align: center;
+      margin-top: 10px;
+      color: #88a2c3;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1180px) {
+      .hero-grid, .upload-layout, .bi-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .donut-layout { grid-template-columns: 1fr; }
+      .dropzone { min-height: 310px; }
+    }
+
+    @media (max-width: 820px) {
+      .page { padding: 16px 12px 58px; }
+      .topbar { padding: 12px 14px; }
+      .hero { padding: 22px; border-radius: 28px; }
+      .hero-mini-grid, .fields-grid, .stats-grid { grid-template-columns: 1fr; }
+      .field:nth-child(1),
+      .field:nth-child(2),
+      .field:nth-child(3),
+      .field:nth-child(4),
+      .field:nth-child(5) { grid-column: auto; }
+      .upload-layout .actions { grid-template-columns: 1fr; }
+      .card { padding: 18px; border-radius: 24px; }
+      .section-head h2, .toolbar h2 { font-size: 20px; }
+      .dropzone { min-height: 250px; }
+      .brand-sub { display: none; }
+      .toolbar-side .search-input { min-width: 100%; }
+      .table-controls { grid-template-columns: 1fr; }
+      .table-actions { justify-content: stretch; }
+      .donut { width: min(210px, 100%); }
+      .bar-row { grid-template-columns: 92px 1fr 64px; }
+      .compliance-table { min-width: 1180px; }
+      .compliance-table thead th { padding: 12px 14px; }
+      .compliance-table tbody td { padding: 12px 14px; }
+      .btn { width: 100%; }
+    }
+
+    @media (hover: none) {
+      .card:hover,
+      .dropzone:hover,
+      .btn:hover,
+      .stat-card:hover {
+        transform: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      #threeBackdrop { display: none; }
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body class="buttery-mode">
+  <canvas id="threeBackdrop" aria-hidden="true"></canvas>
+  <div class="upload-loader" id="uploadLoader" aria-live="polite" aria-hidden="true">
+    <div class="loader-panel">
+      <div class="loader-content">
+        <div class="loader-core">
+          <span class="loader-ring"></span>
+          <span class="loader-mark">✦</span>
+        </div>
+        <div>
+          <div class="loader-title" id="loaderTitle">Reading workbook</div>
+          <div class="loader-detail" id="loaderDetail">Preparing Excel data for the dashboard...</div>
+        </div>
+        <div class="loader-chip-row">
+          <span class="loader-chip">Decode</span>
+          <span class="loader-chip">Analyze</span>
+          <span class="loader-chip">Visualize</span>
+        </div>
+        <div class="loader-bar"><div class="loader-fill"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="chart-tooltip" id="chartTooltip" aria-hidden="true"></div>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">T T L</div>
+        <div>
+          <div class="brand-title">Tata Technologies · Timesheet BI Pulse</div>
+          <div class="brand-sub">internal compliance dashboard concept</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="micro-pill"><span class="dot"></span>Browser-native analysis</span>
+        <span class="micro-pill">BI dashboard view</span>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div>
+            <div class="hero-eyebrow"><span class="dot"></span> Internal Ops · BI Compliance View</div>
+            <h1>See timesheet compliance as a <span class="shine">premium BI dashboard.</span></h1>
+            
+          </div>
+          <div class="hero-chips">
+            <span class="chip">KPI snapshot</span>
+            <span class="chip">Status distribution</span>
+            <span class="chip">Team workload</span>
+            <span class="chip">Risk table</span>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="hero-spotlight">
+            <div class="small">Current BI focus</div>
+            <div class="big" id="heroFocus">No data yet</div>
+            <div class="sub" id="heroSub">Load a workbook to activate the dashboard.</div>
+          </div>
+          <div class="hero-mini-grid">
+            <div class="hero-mini">
+              <div class="label">Offshore target</div>
+              <div class="value">9h</div>
+              <div class="sub">Per working day</div>
+            </div>
+            <div class="hero-mini">
+              <div class="label">Onsite target</div>
+              <div class="value">8h</div>
+              <div class="sub">Per working day</div>
+            </div>
+            <div class="hero-mini">
+              <div class="label">Data handling</div>
+              <div class="value">Local</div>
+              <div class="sub">Runs in browser only</div>
+            </div>
+            <div class="hero-mini">
+              <div class="label">Dashboard</div>
+              <div class="value">Live</div>
+              <div class="sub">Filters update instantly</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="app-shell">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>BI Upload & Filters</h2>
+           
+          </div>
+          <div class="toolbar-side">
+            <!--<a class="btn btn-dark" href="tata_timesheet_dashboard_teamfix.html">Back to Analyzer</a> -->
+          </div>
+        </div>
+
+        <div class="upload-layout">
+          <div class="dropzone" id="dropZone">
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+            <div class="drop-content">
+              <div class="drop-icon">✦</div>
+              <h3>Drop workbook here</h3>
+              
+              <div class="drop-meta">
+                <span>XLSX</span>
+                <span>XLS</span>
+                <span>CSV</span>
+                
+              </div>
+            </div>
+          </div>
+
+          <div class="control-grid">
+            <div class="control-kicker">
+              <div class="title">Analysis Controls</div>
+              
+            </div>
+
+            <div class="fields-grid">
+              <div class="field">
+                <label for="sheetSelect">Sheet</label>
+                <select id="sheetSelect"><option value="">Auto Detect Best Sheet</option></select>
+              </div>
+              <div class="field">
+                <label for="monthSelect">Month</label>
+                <select id="monthSelect"></select>
+              </div>
+              <div class="field">
+                <label for="yearSelect">Year</label>
+                <select id="yearSelect"></select>
+              </div>
+              <div class="field">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                  <option value="all">All Employees</option>
+                  <option value="underbooked">Only Underbooked</option>
+                  <option value="ok">Only OK</option>
+                  <option value="overbooked">Only Overbooked</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="teamFilter">Team</label>
+                <select id="teamFilter">
+                  <option value="all">All Teams</option>
+                  <option value="Offshore">Offshore</option>
+                  <option value="Onsite">Onsite</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="switches">
+              <label class="switch-pill">
+                <input type="checkbox" id="excludeLeaveTasks" />
+                Exclude leave-type tasks in detailed sheet
+              </label>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" id="analyzeBtn">Analyze Dashboard</button>
+              <button class="btn btn-light" id="clearBtn">Clear View</button>
+            </div>
+
+            <div class="status-box">
+              <div class="status-row">
+                <span class="pulse"></span>
+                <span id="statusText">No workbook loaded yet.</span>
+              </div>
+              
+              <div class="message-stack" id="messageStack"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>BI Summary Dashboard</h2>
+            <div class="section-subtitle" id="summarySubtitle">Load data to view KPIs, chart visuals, and current compliance focus.</div>
+          </div>
+          <div class="toolbar-side">
+            <span class="pill" id="modePill">Mode: -</span>
+            <span class="pill" id="sheetPill">Sheet: -</span>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="kpiGrid"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>Power BI Style Visuals</h2>
+            <div class="section-subtitle">Status, team workload, and shortfall patterns in the same visual language as the main dashboard.</div>
+          </div>
+          <div class="toolbar-side">
+            <span class="pill" id="currentViewPill">Current View</span>
+          </div>
+        </div>
+
+        <div class="bi-grid">
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Status Distribution</h3>
+              <span class="pill" id="statusCaption">-</span>
+            </div>
+            <div class="donut-layout">
+              <div class="donut" id="statusDonut" data-total="0"></div>
+              <div class="legend" id="statusLegend"></div>
+            </div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Highest Shortfall</h3>
+              <span class="pill">Top 8</span>
+            </div>
+            <div class="risk-list" id="riskList"></div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Team Workload</h3>
+              <span class="pill">Actual vs expected</span>
+            </div>
+            <div class="bar-list" id="teamBars"></div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Shortfall By Team</h3>
+              <span class="pill">Underbooked hours</span>
+            </div>
+            <div class="bar-list" id="shortfallBars"></div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Compliance Gauge</h3>
+              <span class="pill">Target health</span>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge">
+                <div class="gauge-arc"></div>
+                <div class="gauge-needle" id="gaugeNeedle"></div>
+                <div class="gauge-center"></div>
+              </div>
+              <div>
+                <div class="gauge-value" id="gaugeValue">0%</div>
+                <div class="gauge-caption" id="gaugeCaption">Load data to calculate compliance.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Expected vs Actual Waterfall</h3>
+              <span class="pill">Gap bridge</span>
+            </div>
+            <div class="waterfall" id="waterfallChart"></div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Shortfall Pareto</h3>
+              <span class="pill">Contribution</span>
+            </div>
+            <div class="pareto-list" id="paretoChart"></div>
+          </div>
+
+          <div class="visual-card">
+            <div class="visual-title">
+              <h3>Risk Matrix</h3>
+              <span class="pill">Booked vs gap</span>
+            </div>
+            <div class="matrix" id="riskMatrix">
+              <span class="matrix-label y">Higher shortfall</span>
+              <span class="matrix-label x">Higher booked hours</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="toolbar">
+          <div>
+            <h2>Employee BI Detail Table</h2>
+            <div class="section-subtitle">Filtered rows stay aligned with the BI visuals above.</div>
+          </div>
+        </div>
+
+        <div class="table-shell">
+          <div class="table-controls">
+            <div class="search-wrap" id="tableSearchWrap">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <linearGradient id="googleSearchGradient" x1="2" y1="2" x2="22" y2="22">
+                    <stop offset="0%" stop-color="#4285f4" />
+                    <stop offset="42%" stop-color="#34a853" />
+                    <stop offset="70%" stop-color="#fbbc05" />
+                    <stop offset="100%" stop-color="#ea4335" />
+                  </linearGradient>
+                </defs>
+                <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="url(#googleSearchGradient)" stroke-width="2.4" />
+                <path d="M15.5 15.5L21 21" fill="none" stroke="#4285f4" stroke-linecap="round" stroke-width="2.6" />
+              </svg>
+              <input id="searchInput" class="search-input" type="text" placeholder="Search table by employee id, name, or team" />
+            </div>
+            <div class="table-actions">
+              <button class="btn btn-export" id="summaryExcelBtn">
+                <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="3" width="12" height="18" rx="2.2" fill="#21A366"/>
+                  <path fill="#33C481" d="M13 3h6a2 2 0 0 1 2 2v2.2h-5.8A2.2 2.2 0 0 1 13 5V3z"/>
+                  <rect x="3" y="6" width="10" height="12" rx="1.8" fill="#185C37"/>
+                  <path fill="#fff" d="M5.45 8.95H7.3l1.45 2.4 1.45-2.4H12l-2.26 3.57L12.1 16H10.2l-1.5-2.5L7.2 16H5.3l2.36-3.54z"/>
+                </svg>
+                <span class="btn-label">Summary Excel</span>
+              </button>
+              <button class="btn btn-export" id="summaryPdfBtn">
+                <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="3" width="14" height="18" rx="2.2" fill="#E53935"/>
+                  <path fill="#FF7A75" d="M13 3h4a2 2 0 0 1 2 2v2.2h-3.8A2.2 2.2 0 0 1 13 5V3z"/>
+                  <text x="7.3" y="16.1" fill="#fff" font-size="6.2" font-family="Arial, Helvetica, sans-serif" font-weight="700">PDF</text>
+                </svg>
+                <span class="btn-label">Summary PDF</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="compliance-table">
+              <colgroup>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Employee Name</th>
+                  <th>Team</th>
+                  <th>Actual Booked</th>
+                  <th>Expected Booked</th>
+                  <th>Shortfall</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="7"><div class="empty">Open from analyzer or upload a workbook here.</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer">
+        DEVELOPED BY SUBHAM ⚡
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HOLIDAYS_2026 = [
+      { date: "2026-01-01", name: "New Year Day" },
+      { date: "2026-01-26", name: "Republic Day" },
+      { date: "2026-05-01", name: "Maharashtra Din / May Day / Labour Day / Buddha Pournima" },
+      { date: "2026-08-15", name: "Independence Day" },
+      { date: "2026-09-14", name: "Ganesh Chaturthi / Swarna Gowri Vrata" },
+      { date: "2026-10-02", name: "Mahatma Gandhi Jayanti" },
+      { date: "2026-10-20", name: "Vijaya Dashami / Dussehra" },
+      { date: "2026-11-10", name: "Diwali" },
+      { date: "2026-12-25", name: "Christmas" }
+    ];
+
+    const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const TEAM_HOURS = { Offshore: 9, Onsite: 8 };
+    const DEFAULT_TEAM = "Offshore";
+    const LEAVE_TASKS = ["paid time off", "accumulated paid time off", "leave for contract associate"];
+    const EMPLOYEE_ID_COLUMNS = ["Employee ID", "Emp ID", "EmployeeId", "Employee Number", "Employee No", "Personnel Number", "Person Number", "Resource ID"];
+    const EMPLOYEE_NAME_COLUMNS = ["Employee Name", "Emp Name", "Name", "Resource Name", "Worker Name", "Associate Name"];
+    const BOOKED_COLUMNS = ["Sum of Total Booked", "Total Booked", "Booked Hours", "Booked Hrs", "Actual Booked", "Actual Hours", "Total Hours", "Hours"];
+    const DATE_COLUMNS = ["Date", "Booking Date", "Work Date", "Timesheet Date", "Entry Date", "Transaction Date", "Date of Entry"];
+    const TEAM_COLUMNS = ["Location", "Team", "Work Location", "Employee Location", "Team Name"];
+
+    const state = {
+      workbook: null,
+      currentSheetName: "",
+      currentRows: [],
+      mode: "",
+      allRows: [],
+      filteredRows: [],
+      teamMap: new Map(),
+      statusDonutCounts: null,
+      statusDonutTotal: 0
+    };
+
+    const els = {
+      dropZone: document.getElementById("dropZone"),
+      fileInput: document.getElementById("fileInput"),
+      sheetSelect: document.getElementById("sheetSelect"),
+      monthSelect: document.getElementById("monthSelect"),
+      yearSelect: document.getElementById("yearSelect"),
+      statusFilter: document.getElementById("statusFilter"),
+      teamFilter: document.getElementById("teamFilter"),
+      searchInput: document.getElementById("searchInput"),
+      tableSearchWrap: document.getElementById("tableSearchWrap"),
+      excludeLeaveTasks: document.getElementById("excludeLeaveTasks"),
+      analyzeBtn: document.getElementById("analyzeBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      summaryExcelBtn: document.getElementById("summaryExcelBtn"),
+      summaryPdfBtn: document.getElementById("summaryPdfBtn"),
+      chartTooltip: document.getElementById("chartTooltip"),
+      uploadLoader: document.getElementById("uploadLoader"),
+      loaderTitle: document.getElementById("loaderTitle"),
+      loaderDetail: document.getElementById("loaderDetail"),
+      statusText: document.getElementById("statusText"),
+      messageStack: document.getElementById("messageStack"),
+      heroFocus: document.getElementById("heroFocus"),
+      heroSub: document.getElementById("heroSub"),
+      summarySubtitle: document.getElementById("summarySubtitle"),
+      modePill: document.getElementById("modePill"),
+      sheetPill: document.getElementById("sheetPill"),
+      currentViewPill: document.getElementById("currentViewPill"),
+      kpiGrid: document.getElementById("kpiGrid"),
+      statusDonut: document.getElementById("statusDonut"),
+      statusLegend: document.getElementById("statusLegend"),
+      statusCaption: document.getElementById("statusCaption"),
+      riskList: document.getElementById("riskList"),
+      teamBars: document.getElementById("teamBars"),
+      shortfallBars: document.getElementById("shortfallBars"),
+      gaugeNeedle: document.getElementById("gaugeNeedle"),
+      gaugeValue: document.getElementById("gaugeValue"),
+      gaugeCaption: document.getElementById("gaugeCaption"),
+      waterfallChart: document.getElementById("waterfallChart"),
+      paretoChart: document.getElementById("paretoChart"),
+      riskMatrix: document.getElementById("riskMatrix"),
+      tableBody: document.getElementById("tableBody")
+    };
+
+    function initControls() {
+      els.monthSelect.innerHTML = MONTH_NAMES.map((name, index) => {
+        const value = String(index + 1);
+        return `<option value="${value}" ${index === 3 ? "selected" : ""}>${name}</option>`;
+      }).join("");
+      els.yearSelect.innerHTML = [2024, 2025, 2026, 2027].map(year => `<option value="${year}" ${year === 2026 ? "selected" : ""}>${year}</option>`).join("");
+    }
+
+    function setStatus(text) {
+      els.statusText.textContent = text;
+    }
+
+    function showMessage(type, text) {
+      els.messageStack.innerHTML = text ? `<div class="message ${type}">${escapeHtml(text)}</div>` : "";
+    }
+
+    function clearMessage() {
+      els.messageStack.innerHTML = "";
+    }
+
+    function nextPaint() {
+      return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function showUploadLoader(title = "Reading workbook", detail = "Preparing Excel data for the dashboard...") {
+      els.loaderTitle.textContent = title;
+      els.loaderDetail.textContent = detail;
+      els.uploadLoader.classList.add("active");
+      els.uploadLoader.setAttribute("aria-hidden", "false");
+    }
+
+    function updateUploadLoader(title, detail) {
+      els.loaderTitle.textContent = title;
+      els.loaderDetail.textContent = detail;
+    }
+
+    function hideUploadLoader() {
+      els.uploadLoader.classList.remove("active");
+      els.uploadLoader.setAttribute("aria-hidden", "true");
+    }
+
+    function syncSearchAnimation() {
+      els.tableSearchWrap?.classList.toggle("has-value", Boolean(safeText(els.searchInput.value)));
+    }
+
+    function initThreeBackdrop() {
+      const canvas = document.getElementById("threeBackdrop");
+      const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const butteryMode = document.body.classList.contains("buttery-mode");
+      if (!canvas || reduceMotion || butteryMode || typeof THREE === "undefined") return;
+
+      const lowPowerDevice = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+        || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+      if (lowPowerDevice) return;
+
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          canvas,
+          alpha: true,
+          antialias: false,
+          powerPreference: "low-power"
+        });
+      } catch (error) {
+        console.warn("Three.js backdrop disabled:", error);
+        return;
+      }
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+      camera.position.z = 18;
+      renderer.setClearColor(0x000000, 0);
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const particleCount = window.innerWidth < 760 ? 40 : 70;
+      const positions = new Float32Array(particleCount * 3);
+      for (let index = 0; index < particleCount; index++) {
+        positions[index * 3] = (Math.random() - 0.5) * 24;
+        positions[index * 3 + 1] = (Math.random() - 0.5) * 14;
+        positions[index * 3 + 2] = (Math.random() - 0.5) * 16;
+      }
+
+      const particleGeometry = new THREE.BufferGeometry();
+      particleGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const particles = new THREE.Points(
+        particleGeometry,
+        new THREE.PointsMaterial({
+          color: 0x8dd8ff,
+          size: 0.055,
+          transparent: true,
+          opacity: 0.72,
+          depthWrite: false
+        })
+      );
+      group.add(particles);
+
+      const wireMaterial = new THREE.MeshBasicMaterial({
+        color: 0x24e1c5,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.075
+      });
+      const core = new THREE.Mesh(new THREE.IcosahedronGeometry(6.2, 2), wireMaterial);
+      core.position.set(4.6, -0.6, -7);
+      group.add(core);
+
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0x3aa8ff,
+        transparent: true,
+        opacity: 0.13
+      });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(5.4, 0.018, 8, 144), ringMaterial);
+      ring.position.set(-5.2, 2.2, -5);
+      ring.rotation.x = 1.12;
+      group.add(ring);
+
+      const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
+      const clock = new THREE.Clock();
+      let frameId = 0;
+      let lastFrameTime = 0;
+      const targetFrameGap = 1000 / 30;
+
+      function resizeThreeBackdrop() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.1));
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+
+      function renderThreeBackdrop() {
+        frameId = requestAnimationFrame(renderThreeBackdrop);
+        const now = performance.now();
+        if (now - lastFrameTime < targetFrameGap) return;
+        lastFrameTime = now;
+        const elapsed = clock.getElapsedTime();
+        pointer.x += (pointer.targetX - pointer.x) * 0.035;
+        pointer.y += (pointer.targetY - pointer.y) * 0.035;
+        group.rotation.y = elapsed * 0.035 + pointer.x;
+        group.rotation.x = pointer.y;
+        particles.rotation.y = elapsed * 0.018;
+        core.rotation.x = elapsed * 0.025;
+        core.rotation.y = elapsed * 0.038;
+        ring.rotation.z = elapsed * 0.045;
+        renderer.render(scene, camera);
+      }
+
+      function startThreeBackdrop() {
+        if (!frameId) renderThreeBackdrop();
+      }
+
+      function stopThreeBackdrop() {
+        if (!frameId) return;
+        cancelAnimationFrame(frameId);
+        frameId = 0;
+      }
+
+      window.__threeBackdropControls = {
+        start: startThreeBackdrop,
+        stop: stopThreeBackdrop
+      };
+
+      window.addEventListener("resize", resizeThreeBackdrop, { passive: true });
+      window.addEventListener("pointermove", event => {
+        pointer.targetX = (event.clientX / window.innerWidth - 0.5) * 0.26;
+        pointer.targetY = (event.clientY / window.innerHeight - 0.5) * 0.16;
+      }, { passive: true });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopThreeBackdrop();
+          return;
+        }
+        startThreeBackdrop();
+      });
+
+      resizeThreeBackdrop();
+      startThreeBackdrop();
+    }
+
+    function bindScrollBackdropPause() {
+      if (document.body.classList.contains("buttery-mode")) return;
+      let scrollIdleTimer = 0;
+
+      window.addEventListener("scroll", () => {
+        window.__threeBackdropControls?.stop?.();
+        window.clearTimeout(scrollIdleTimer);
+        scrollIdleTimer = window.setTimeout(() => {
+          if (!document.hidden) window.__threeBackdropControls?.start?.();
+        }, 220);
+      }, { passive: true });
+    }
+
+    function buildDonutGradient(counts, total, activeStatus = "") {
+      const safeTotal = Math.max(total, 1);
+      const underDeg = (counts.Underbooked || 0) / safeTotal * 360;
+      const overDeg = (counts.Overbooked || 0) / safeTotal * 360;
+      const okDeg = (counts.OK || 0) / safeTotal * 360;
+      const underColor = activeStatus && activeStatus !== "Underbooked" ? "rgba(255,107,138,0.28)" : "var(--danger)";
+      const overColor = activeStatus && activeStatus !== "Overbooked" ? "rgba(245,180,69,0.28)" : "var(--warning)";
+      const okColor = activeStatus && activeStatus !== "OK" ? "rgba(50,210,150,0.26)" : "var(--success)";
+      return `conic-gradient(${underColor} 0deg ${underDeg}deg, ${overColor} ${underDeg}deg ${underDeg + overDeg}deg, ${okColor} ${underDeg + overDeg}deg ${underDeg + overDeg + okDeg}deg, rgba(255,255,255,0.08) ${underDeg + overDeg + okDeg}deg 360deg)`;
+    }
+
+    function bindChartInteractions() {
+      let currentTooltipTarget = null;
+
+      function hideTooltip() {
+        if (!els.chartTooltip) return;
+        els.chartTooltip.classList.remove("active");
+        els.chartTooltip.setAttribute("aria-hidden", "true");
+        currentTooltipTarget = null;
+      }
+
+      function positionTooltip(event) {
+        if (!els.chartTooltip) return;
+        const tooltipRect = els.chartTooltip.getBoundingClientRect();
+        const margin = 14;
+        let left = event.clientX + margin;
+        let top = event.clientY + margin;
+        if (left + tooltipRect.width > window.innerWidth - 8) left = event.clientX - tooltipRect.width - margin;
+        if (top + tooltipRect.height > window.innerHeight - 8) top = event.clientY - tooltipRect.height - margin;
+        els.chartTooltip.style.left = `${Math.max(8, left)}px`;
+        els.chartTooltip.style.top = `${Math.max(8, top)}px`;
+      }
+
+      document.addEventListener("pointermove", event => {
+        if (!(event.target instanceof Element) || !els.chartTooltip) {
+          hideTooltip();
+          return;
+        }
+        const tipTarget = event.target.closest("[data-tip]");
+        if (!tipTarget) {
+          hideTooltip();
+          return;
+        }
+        const tipText = tipTarget.getAttribute("data-tip");
+        if (!tipText) {
+          hideTooltip();
+          return;
+        }
+        if (currentTooltipTarget !== tipTarget) {
+          currentTooltipTarget = tipTarget;
+          els.chartTooltip.textContent = tipText;
+        }
+        positionTooltip(event);
+        els.chartTooltip.classList.add("active");
+        els.chartTooltip.setAttribute("aria-hidden", "false");
+      }, { passive: true });
+
+      document.addEventListener("pointerdown", hideTooltip, { passive: true });
+      window.addEventListener("scroll", hideTooltip, { passive: true });
+      window.addEventListener("blur", hideTooltip);
+
+      function resetStatusDonutFocus() {
+        if (!state.statusDonutCounts) return;
+        els.statusDonut.style.background = buildDonutGradient(state.statusDonutCounts, state.statusDonutTotal);
+        els.statusCaption.textContent = `${state.statusDonutCounts.Underbooked} underbooked`;
+      }
+
+      els.statusLegend.addEventListener("pointerover", event => {
+        const row = event.target.closest(".legend-row[data-status]");
+        if (!row || !state.statusDonutCounts) return;
+        const activeStatus = row.dataset.status;
+        const activeCount = row.dataset.count || "0";
+        els.statusDonut.style.background = buildDonutGradient(state.statusDonutCounts, state.statusDonutTotal, activeStatus);
+        els.statusCaption.textContent = `${activeCount} ${activeStatus.toLowerCase()}`;
+      });
+
+      els.statusLegend.addEventListener("pointerout", event => {
+        if (event.relatedTarget instanceof Element && els.statusLegend.contains(event.relatedTarget)) return;
+        resetStatusDonutFocus();
+      });
+    }
+
+    function safeText(value) {
+      return value == null ? "" : String(value).trim();
+    }
+
+    function normalizeText(value) {
+      return safeText(value).toLowerCase().replace(/\s+/g, " ");
+    }
+
+    function escapeHtml(value) {
+      return safeText(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatNumber(value) {
+      const num = Number(value || 0);
+      return Number.isInteger(num) ? String(num) : num.toFixed(2);
+    }
+
+    function parseExcelDate(value) {
+      if (value == null || value === "") return null;
+      if (value instanceof Date && !isNaN(value.getTime())) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      if (typeof value === "number" && typeof XLSX !== "undefined") {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return new Date(parsed.y, parsed.m - 1, parsed.d);
+      }
+
+      const raw = safeText(value);
+      if (!raw) return null;
+
+      let match = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+      if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+
+      match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+      if (match) {
+        const months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+        const mon = months[match[2].toLowerCase()];
+        if (mon >= 0) return new Date(Number(match[3]), mon, Number(match[1]));
+      }
+
+      match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+      if (match) {
+        const day = Number(match[1]);
+        const month = Number(match[2]);
+        const year = Number(match[3]);
+        return new Date(year, month - 1, day);
+      }
+
+      const direct = new Date(raw);
+      if (!isNaN(direct.getTime())) return new Date(direct.getFullYear(), direct.getMonth(), direct.getDate());
+      return null;
+    }
+
+    function isoDate(dateObj) {
+      return [
+        dateObj.getFullYear(),
+        String(dateObj.getMonth() + 1).padStart(2, "0"),
+        String(dateObj.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+
+    function monthKey(dateObj) {
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function monthLabel(year, month) {
+      return `${MONTH_NAMES[month - 1]} ${year}`;
+    }
+
+    function isWeekend(dateObj) {
+      const day = dateObj.getDay();
+      return day === 0 || day === 6;
+    }
+
+    function holidayInfo(year, month) {
+      const totalDays = new Date(year, month, 0).getDate();
+      let weekendDays = 0;
+      let weekdayHolidays = 0;
+      const holidayDates = [];
+      const holidaySet = new Set(HOLIDAYS_2026.map(item => item.date));
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dateObj = new Date(year, month - 1, day);
+        const iso = isoDate(dateObj);
+        if (isWeekend(dateObj)) {
+          weekendDays++;
+        } else if (holidaySet.has(iso)) {
+          weekdayHolidays++;
+          holidayDates.push(iso);
+        }
+      }
+
+      return {
+        totalDays,
+        weekendDays,
+        weekdayHolidays,
+        workingDays: totalDays - weekendDays - weekdayHolidays,
+        holidayDates
+      };
+    }
+
+    function getCell(row, options) {
+      const keys = Object.keys(row || {});
+      for (const key of keys) {
+        const normalizedKey = normalizeText(key);
+        for (const option of options) {
+          if (normalizedKey === normalizeText(option)) return row[key];
+        }
+      }
+      for (const key of keys) {
+        const normalizedKey = normalizeText(key);
+        for (const option of options) {
+          const normalizedOption = normalizeText(option);
+          if (normalizedOption.length >= 5 && normalizedKey.includes(normalizedOption)) return row[key];
+        }
+      }
+      return undefined;
+    }
+
+    function normalizeTeam(value, fallback) {
+      const text = normalizeText(value);
+      if (text.includes("offshore")) return "Offshore";
+      if (text.includes("onsite") || text.includes("on site")) return "Onsite";
+      return fallback;
+    }
+
+    function getExplicitTeam(row) {
+      return normalizeTeam(getCell(row, TEAM_COLUMNS), "");
+    }
+
+    function employeeLookupKeys(employeeId, employeeName) {
+      const id = normalizeText(employeeId);
+      const name = normalizeText(employeeName);
+      const keys = [];
+      if (id && name) keys.push(`idname:${id}||${name}`);
+      if (id) keys.push(`id:${id}`);
+      if (name) keys.push(`name:${name}`);
+      return keys;
+    }
+
+    function chooseTeamFromVotes(votes) {
+      if (!votes) return "";
+      const offshoreVotes = Number(votes.Offshore || 0);
+      const onsiteVotes = Number(votes.Onsite || 0);
+      if (offshoreVotes === 0 && onsiteVotes === 0) return "";
+      return offshoreVotes >= onsiteVotes ? "Offshore" : "Onsite";
+    }
+
+    function addTeamVote(map, key, team) {
+      if (!key || !team) return;
+      if (!map.has(key)) map.set(key, { Offshore: 0, Onsite: 0 });
+      map.get(key)[team] += 1;
+    }
+
+    function sheetRows(sheetName) {
+      const sheet = state.workbook?.Sheets?.[sheetName];
+      if (!sheet) return [];
+      return XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    }
+
+    function buildWorkbookTeamMap() {
+      const map = new Map();
+      if (!state.workbook) return map;
+
+      state.workbook.SheetNames.forEach(sheetName => {
+        sheetRows(sheetName).forEach(row => {
+          const employeeId = safeText(getCell(row, EMPLOYEE_ID_COLUMNS));
+          const employeeName = safeText(getCell(row, EMPLOYEE_NAME_COLUMNS));
+          const explicitTeam = getExplicitTeam(row);
+          if ((!employeeId && !employeeName) || !explicitTeam) return;
+          employeeLookupKeys(employeeId, employeeName).forEach(key => addTeamVote(map, key, explicitTeam));
+        });
+      });
+
+      return map;
+    }
+
+    function lookupMappedTeam(employeeId, employeeName) {
+      for (const key of employeeLookupKeys(employeeId, employeeName)) {
+        const team = chooseTeamFromVotes(state.teamMap.get(key));
+        if (team) return team;
+      }
+      return "";
+    }
+
+    function resolveEmployeeTeam(row, fallback, employeeId, employeeName) {
+      return getExplicitTeam(row) || lookupMappedTeam(employeeId, employeeName) || fallback;
+    }
+
+    function detectSheetMode(rows) {
+      if (!rows.length) return { mode: "unknown", missing: ["No rows found"] };
+      const first = rows[0];
+      const hasEmployee = getCell(first, EMPLOYEE_ID_COLUMNS) !== undefined;
+      const hasName = getCell(first, EMPLOYEE_NAME_COLUMNS) !== undefined;
+      const hasSummaryBooked = getCell(first, BOOKED_COLUMNS) !== undefined;
+      const hasDate = getCell(first, DATE_COLUMNS) !== undefined;
+
+      if (hasEmployee && hasName && hasDate && hasSummaryBooked) return { mode: "detailed", missing: [] };
+      if (hasEmployee && hasName && hasSummaryBooked) return { mode: "summary", missing: [] };
+
+      const missing = [];
+      if (!hasEmployee) missing.push("Employee ID");
+      if (!hasName) missing.push("Employee Name");
+      if (!hasSummaryBooked) missing.push("Sum of Total Booked / Total Booked");
+      return { mode: "unknown", missing };
+    }
+
+    function autoChooseSheet() {
+      if (!state.workbook) return "";
+      const selected = safeText(els.sheetSelect.value);
+      if (selected && state.workbook.Sheets[selected]) return selected;
+
+      const preferred = state.workbook.SheetNames.find(name => normalizeText(name) === "timesheetdata");
+      if (preferred) return preferred;
+
+      let best = "";
+      let bestScore = -1;
+      for (const name of state.workbook.SheetNames) {
+        const info = detectSheetMode(sheetRows(name));
+        const score = info.mode === "detailed" ? 3 : info.mode === "summary" ? 2 : 0;
+        if (score > bestScore) {
+          bestScore = score;
+          best = name;
+        }
+      }
+      return best || state.workbook.SheetNames[0] || "";
+    }
+
+    function populateSheetSelect() {
+      els.sheetSelect.innerHTML = `<option value="">Auto Detect Best Sheet</option>`;
+      if (!state.workbook) return;
+      state.workbook.SheetNames.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        els.sheetSelect.appendChild(option);
+      });
+    }
+
+    function populateMonthsFromRows(rows) {
+      const monthCounts = new Map();
+      const years = new Set();
+      rows.forEach(row => {
+        const d = parseExcelDate(getCell(row, DATE_COLUMNS));
+        if (!d) return;
+        const key = monthKey(d);
+        monthCounts.set(key, (monthCounts.get(key) || 0) + 1);
+        years.add(d.getFullYear());
+      });
+
+      if (!monthCounts.size) return;
+
+      const sortedYears = Array.from(years).sort((a, b) => a - b);
+      els.yearSelect.innerHTML = sortedYears.map(year => `<option value="${year}">${year}</option>`).join("");
+
+      const bestMonth = Array.from(monthCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
+      const [year, month] = bestMonth.split("-").map(Number);
+      els.yearSelect.value = String(year);
+      els.monthSelect.value = String(month);
+    }
+
+    function shouldExcludeLeave(row) {
+      const task = normalizeText(getCell(row, ["Task", "Task Name", "Project Task", "Work Item", "Entry Type"]));
+      return LEAVE_TASKS.includes(task);
+    }
+
+    function getStatus(shortfall) {
+      if (shortfall > 0) return "Underbooked";
+      if (shortfall < 0) return "Overbooked";
+      return "OK";
+    }
+
+    function sortRows(a, b) {
+      if (b.shortfall !== a.shortfall) return b.shortfall - a.shortfall;
+      return safeText(a.employeeName).localeCompare(safeText(b.employeeName));
+    }
+
+    function statusClass(status) {
+      if (status === "Underbooked") return "status-danger";
+      if (status === "Overbooked") return "status-warning";
+      return "status-success";
+    }
+
+    function summaryModeRows(rows, selectedYear, selectedMonth) {
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      return rows.map(row => {
+        const employeeId = safeText(getCell(row, EMPLOYEE_ID_COLUMNS));
+        const employeeName = safeText(getCell(row, EMPLOYEE_NAME_COLUMNS));
+        const actualBooked = Number(getCell(row, BOOKED_COLUMNS) || 0);
+        if (!employeeId && !employeeName) return null;
+        if (normalizeText(employeeName) === "grand total") return null;
+
+        const team = resolveEmployeeTeam(row, DEFAULT_TEAM, employeeId, employeeName);
+        const expectedBooked = (TEAM_HOURS[team] || TEAM_HOURS[DEFAULT_TEAM]) * calendar.workingDays;
+        const shortfall = expectedBooked - actualBooked;
+        return { employeeId, employeeName, team, actualBooked, expectedBooked, shortfall, status: getStatus(shortfall) };
+      }).filter(Boolean).sort(sortRows);
+    }
+
+    function detailedModeRows(rows, selectedYear, selectedMonth) {
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      const summary = new Map();
+
+      rows.forEach(row => {
+        const dateObj = parseExcelDate(getCell(row, DATE_COLUMNS));
+        if (!dateObj) return;
+        if (dateObj.getFullYear() !== selectedYear || dateObj.getMonth() + 1 !== selectedMonth) return;
+        if (els.excludeLeaveTasks.checked && shouldExcludeLeave(row)) return;
+
+        const employeeId = safeText(getCell(row, EMPLOYEE_ID_COLUMNS));
+        const employeeName = safeText(getCell(row, EMPLOYEE_NAME_COLUMNS));
+        const booked = Number(getCell(row, BOOKED_COLUMNS) || 0);
+        const explicitTeam = getExplicitTeam(row);
+        if (!employeeId && !employeeName) return;
+
+        const key = `${employeeId}||${employeeName}`;
+        if (!summary.has(key)) summary.set(key, { employeeId, employeeName, actualBooked: 0, teamVotes: { Offshore: 0, Onsite: 0 } });
+        const item = summary.get(key);
+        item.actualBooked += booked;
+        if (explicitTeam) item.teamVotes[explicitTeam] += 1;
+      });
+
+      return Array.from(summary.values()).map(item => {
+        const team = chooseTeamFromVotes(item.teamVotes) || lookupMappedTeam(item.employeeId, item.employeeName) || DEFAULT_TEAM;
+        const expectedBooked = (TEAM_HOURS[team] || TEAM_HOURS[DEFAULT_TEAM]) * calendar.workingDays;
+        const shortfall = expectedBooked - item.actualBooked;
+        return { employeeId: item.employeeId, employeeName: item.employeeName, team, actualBooked: item.actualBooked, expectedBooked, shortfall, status: getStatus(shortfall) };
+      }).sort(sortRows);
+    }
+
+    function readWorkbook(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = event => {
+          try {
+            const data = new Uint8Array(event.target.result);
+            resolve(XLSX.read(data, { type: "array" }));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("File read failed."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function loadWorkbook(file) {
+      clearMessage();
+      if (!file) return;
+      if (typeof XLSX === "undefined") {
+        showMessage("error", "SheetJS could not be loaded. Open this page with internet enabled or replace the CDN with a local file.");
+        return;
+      }
+
+      const loaderStartedAt = performance.now();
+      showUploadLoader("Reading workbook", "Loading Excel file into the dashboard...");
+      await nextPaint();
+
+      try {
+        setStatus("Reading workbook...");
+        updateUploadLoader("Parsing workbook", "Detecting sheets, employees, and booked hours...");
+        state.workbook = await readWorkbook(file);
+        updateUploadLoader("Preparing dashboard", "Building summary, filters, and BI visuals...");
+        await nextPaint();
+        state.teamMap = buildWorkbookTeamMap();
+        populateSheetSelect();
+        const chosen = autoChooseSheet();
+        els.sheetSelect.value = chosen;
+        selectSheet(chosen, file.name);
+      } catch (error) {
+        console.error(error);
+        setStatus("Workbook load failed.");
+        showMessage("error", "Failed to read workbook. Please upload a valid .xlsx, .xls, or .csv file.");
+      } finally {
+        const elapsed = performance.now() - loaderStartedAt;
+        if (elapsed < 900) await wait(900 - elapsed);
+        hideUploadLoader();
+      }
+    }
+
+    function selectSheet(sheetName, fileName = "Workbook") {
+      if (!state.workbook || !sheetName) return;
+      const rows = sheetRows(sheetName);
+      const info = detectSheetMode(rows);
+      state.currentSheetName = sheetName;
+      state.currentRows = rows;
+      state.mode = info.mode;
+
+      if (info.mode === "unknown") {
+        setStatus(`Loaded ${fileName} · Sheet ${sheetName}, but structure is not supported.`);
+        showMessage("error", `Unsupported sheet structure. Missing columns: ${info.missing.join(", ")}.`);
+        return;
+      }
+
+      populateMonthsFromRows(rows);
+      setStatus(`Loaded ${fileName} · Sheet: ${sheetName} · Mode: ${info.mode} · Rows: ${rows.length}`);
+      showMessage("success", `Sheet loaded in ${info.mode} mode. Dashboard updated.`);
+      analyzeCurrentSheet();
+    }
+
+    function analyzeCurrentSheet() {
+      clearMessage();
+      if (!state.currentRows.length) {
+        showMessage("error", "Please upload a valid workbook first.");
+        return;
+      }
+
+      const selectedYear = Number(els.yearSelect.value);
+      const selectedMonth = Number(els.monthSelect.value);
+      if (!selectedYear || !selectedMonth) {
+        showMessage("error", "Please select a valid month and year.");
+        return;
+      }
+
+      state.allRows = state.mode === "detailed"
+        ? detailedModeRows(state.currentRows, selectedYear, selectedMonth)
+        : summaryModeRows(state.currentRows, selectedYear, selectedMonth);
+
+      if (!state.allRows.length) {
+        showMessage("error", "No employee rows found for the selected configuration.");
+        renderEmpty();
+        return;
+      }
+
+      applyFilters();
+      showMessage("success", `Dashboard ready. ${state.allRows.length} employees processed.`);
+    }
+
+    function loadTransferredPayload() {
+      const raw = localStorage.getItem("timesheetPowerBiPayload");
+      if (!raw) return false;
+
+      try {
+        const payload = JSON.parse(raw);
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        if (!rows.length) return false;
+
+        state.allRows = rows;
+        state.currentSheetName = payload.sourceSheet || "Analyzer result";
+        state.mode = payload.mode || "summary";
+        if (payload.month) els.monthSelect.value = String(payload.month);
+        if (payload.year) els.yearSelect.value = String(payload.year);
+        applyFilters();
+        setStatus(`Loaded ${rows.length} analyzed employees from the analyzer page.`);
+        showMessage("success", "Analyzer data loaded into the Tata BI dashboard.");
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    function applyFilters() {
+      const statusFilter = els.statusFilter.value;
+      const teamFilter = els.teamFilter.value;
+      const search = normalizeText(els.searchInput.value);
+      syncSearchAnimation();
+
+      state.filteredRows = state.allRows.filter(row => {
+        if (statusFilter === "underbooked" && row.shortfall <= 0) return false;
+        if (statusFilter === "ok" && row.shortfall !== 0) return false;
+        if (statusFilter === "overbooked" && row.shortfall >= 0) return false;
+        if (teamFilter !== "all" && row.team !== teamFilter) return false;
+        if (!search) return true;
+        return normalizeText([row.employeeId, row.employeeName, row.team, row.status].join(" ")).includes(search);
+      });
+
+      renderDashboard();
+    }
+
+    function sum(rows, key, positiveOnly = false) {
+      return rows.reduce((total, row) => {
+        const value = Number(row[key] || 0);
+        return total + (positiveOnly ? Math.max(value, 0) : value);
+      }, 0);
+    }
+
+    function groupRows(rows, key) {
+      return rows.reduce((map, row) => {
+        const group = row[key] || "Unknown";
+        if (!map.has(group)) map.set(group, []);
+        map.get(group).push(row);
+        return map;
+      }, new Map());
+    }
+
+    function renderDashboard() {
+      const rows = state.filteredRows;
+      const allRows = state.allRows;
+      if (!allRows.length) {
+        renderEmpty();
+        return;
+      }
+
+      const selectedYear = Number(els.yearSelect.value);
+      const selectedMonth = Number(els.monthSelect.value);
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      const actual = sum(rows, "actualBooked");
+      const expected = sum(rows, "expectedBooked");
+      const shortfall = sum(rows, "shortfall", true);
+      const underbooked = rows.filter(row => row.shortfall > 0).length;
+      const complianceRate = rows.length ? Math.round(((rows.length - underbooked) / rows.length) * 100) : 0;
+
+      els.heroFocus.textContent = `${formatNumber(shortfall)}h shortfall`;
+      els.heroSub.textContent = `${monthLabel(selectedYear, selectedMonth)} · ${rows.length} employees in current view`;
+      els.summarySubtitle.textContent = `${monthLabel(selectedYear, selectedMonth)} · ${calendar.workingDays} working days · ${allRows.length} analyzed employees`;
+      els.modePill.textContent = `Mode: ${state.mode === "detailed" ? "Detailed aggregation" : "Summary comparison"}`;
+      els.sheetPill.textContent = `Sheet: ${state.currentSheetName || "-"}`;
+      els.currentViewPill.textContent = `${rows.length} rows in current view`;
+
+      els.kpiGrid.innerHTML = [
+        ["Employees", rows.length, `${allRows.length} total analyzed`],
+        ["Actual Booked", formatNumber(actual), "Hours booked in current view"],
+        ["Expected Booked", formatNumber(expected), "Target hours for selected month"],
+        ["Shortfall", formatNumber(shortfall), `${underbooked} employees need attention`],
+        ["Compliance Rate", `${complianceRate}%`, "OK or overbooked employees"]
+      ].map(([label, value, note]) => `
+        <div class="stat-card">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${value}</div>
+          <div class="stat-note">${note}</div>
+        </div>
+      `).join("");
+
+      renderStatusDonut(rows);
+      renderRiskList(rows);
+      renderTeamBars(rows);
+      renderShortfallBars(rows);
+      renderComplianceGauge(complianceRate, underbooked, rows.length);
+      renderWaterfall(actual, expected, shortfall);
+      renderPareto(rows);
+      renderRiskMatrix(rows);
+      renderTable(rows);
+      setStatus(`Dashboard visible for ${rows.length} employees · ${formatNumber(shortfall)} shortfall hours.`);
+    }
+
+    function renderEmpty() {
+      els.kpiGrid.innerHTML = [
+        ["Employees", "-", "Upload data to populate"],
+        ["Actual Booked", "-", "Upload data to populate"],
+        ["Expected Booked", "-", "Upload data to populate"],
+        ["Shortfall", "-", "Upload data to populate"],
+        ["Compliance Rate", "-", "Upload data to populate"]
+      ].map(([label, value, note]) => `
+        <div class="stat-card">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${value}</div>
+          <div class="stat-note">${note}</div>
+        </div>
+      `).join("");
+      els.heroFocus.textContent = "No data yet";
+      els.heroSub.textContent = "Load a workbook to activate the dashboard.";
+      els.summarySubtitle.textContent = "Load data to view KPIs, chart visuals, and current compliance focus.";
+      els.modePill.textContent = "Mode: -";
+      els.sheetPill.textContent = "Sheet: -";
+      els.currentViewPill.textContent = "Current View";
+      state.statusDonutCounts = null;
+      state.statusDonutTotal = 0;
+      els.statusDonut.dataset.total = "0";
+      els.statusDonut.dataset.tip = "No status data yet.";
+      els.statusDonut.style.background = "conic-gradient(rgba(255,255,255,0.08) 0deg 360deg)";
+      els.statusCaption.textContent = "-";
+      els.statusLegend.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.riskList.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.teamBars.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.shortfallBars.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.gaugeNeedle.style.setProperty("--needle-angle", "-90deg");
+      els.gaugeValue.textContent = "0%";
+      els.gaugeCaption.textContent = "Load data to calculate compliance.";
+      els.waterfallChart.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.paretoChart.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.riskMatrix.innerHTML = `
+        <span class="matrix-label y">Higher shortfall</span>
+        <span class="matrix-label x">Higher booked hours</span>
+      `;
+      els.tableBody.innerHTML = `<tr><td colspan="7"><div class="empty">Open from analyzer or upload a workbook here.</div></td></tr>`;
+    }
+
+    function renderStatusDonut(rows) {
+      const counts = {
+        Underbooked: rows.filter(row => row.status === "Underbooked").length,
+        Overbooked: rows.filter(row => row.status === "Overbooked").length,
+        OK: rows.filter(row => row.status === "OK").length
+      };
+      const total = Math.max(rows.length, 1);
+
+      state.statusDonutCounts = counts;
+      state.statusDonutTotal = total;
+      els.statusDonut.dataset.total = String(rows.length);
+      els.statusDonut.dataset.tip = `${rows.length} employees in current view`;
+      els.statusDonut.style.background = buildDonutGradient(counts, total);
+      els.statusCaption.textContent = `${counts.Underbooked} underbooked`;
+      els.statusLegend.innerHTML = [
+        ["Underbooked", counts.Underbooked, "var(--danger)"],
+        ["Overbooked", counts.Overbooked, "var(--warning)"],
+        ["OK", counts.OK, "var(--success)"]
+      ].map(([label, count, color]) => `
+        <div class="legend-row" data-status="${label}" data-count="${count}" data-tip="${label}: ${count} employees">
+          <span class="swatch" style="background:${color}"></span>
+          <span>${label}</span>
+          <strong>${count}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderRiskList(rows) {
+      const topRows = rows.filter(row => row.shortfall > 0).sort(sortRows).slice(0, 8);
+      els.riskList.innerHTML = topRows.map(row => `
+        <div class="risk-item" data-tip="${escapeHtml(`${row.employeeName || row.employeeId} (${row.team}) shortfall ${formatNumber(row.shortfall)}h`)}}">
+          <div>
+            <div class="risk-name">${escapeHtml(row.employeeName || row.employeeId)}</div>
+            <div class="risk-meta">${escapeHtml(row.employeeId)} · ${escapeHtml(row.team)} · actual ${formatNumber(row.actualBooked)} / expected ${formatNumber(row.expectedBooked)}</div>
+          </div>
+          <div class="risk-hours">${formatNumber(row.shortfall)}h</div>
+        </div>
+      `).join("") || `<div class="empty">No underbooked employees in current view.</div>`;
+    }
+
+    function renderTeamBars(rows) {
+      const groups = groupRows(rows, "team");
+      const items = Array.from(groups.entries()).map(([team, teamRows]) => ({
+        label: team,
+        actual: sum(teamRows, "actualBooked"),
+        expected: sum(teamRows, "expectedBooked")
+      }));
+      const maxValue = Math.max(...items.map(item => Math.max(item.actual, item.expected)), 1);
+
+      els.teamBars.innerHTML = items.map(item => `
+        <div class="bar-row" data-tip="${escapeHtml(`${item.label} actual booked ${formatNumber(item.actual)} hours`)}}">
+          <span>${escapeHtml(item.label)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.actual / maxValue * 100)}%"></div></div>
+          <strong>${formatNumber(item.actual)}</strong>
+        </div>
+        <div class="bar-row" data-tip="${escapeHtml(`${item.label} expected booked ${formatNumber(item.expected)} hours`)}}">
+          <span>Expected</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.expected / maxValue * 100)}%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+          <strong>${formatNumber(item.expected)}</strong>
+        </div>
+      `).join("") || `<div class="empty">No rows in current view.</div>`;
+    }
+
+    function renderShortfallBars(rows) {
+      const groups = groupRows(rows, "team");
+      const items = Array.from(groups.entries()).map(([team, teamRows]) => ({
+        label: team,
+        shortfall: sum(teamRows, "shortfall", true)
+      }));
+      const maxValue = Math.max(...items.map(item => item.shortfall), 1);
+
+      els.shortfallBars.innerHTML = items.map(item => `
+        <div class="bar-row" data-tip="${escapeHtml(`${item.label} shortfall ${formatNumber(item.shortfall)} hours`)}}">
+          <span>${escapeHtml(item.label)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.shortfall / maxValue * 100)}%; background: linear-gradient(90deg, var(--danger), var(--warning));"></div></div>
+          <strong>${formatNumber(item.shortfall)}</strong>
+        </div>
+      `).join("") || `<div class="empty">No rows in current view.</div>`;
+    }
+
+    function renderComplianceGauge(rate, underbooked, visibleRows) {
+      const cleanRate = Math.max(0, Math.min(100, Number(rate || 0)));
+      const angle = -90 + (cleanRate / 100 * 180);
+      els.gaugeNeedle.style.setProperty("--needle-angle", `${angle}deg`);
+      els.gaugeValue.textContent = `${cleanRate}%`;
+      els.gaugeCaption.textContent = visibleRows
+        ? `${underbooked} underbooked employees in current view`
+        : "No employees in current view.";
+    }
+
+    function renderWaterfall(actual, expected, shortfall) {
+      const positiveActual = Math.max(Number(actual || 0), 0);
+      const positiveExpected = Math.max(Number(expected || 0), 0);
+      const positiveShortfall = Math.max(Number(shortfall || 0), 0);
+      const maxValue = Math.max(positiveActual, positiveExpected, positiveShortfall, 1);
+      const steps = [
+        ["Expected", positiveExpected, "expected"],
+        ["Actual", positiveActual, ""],
+        ["Gap", positiveShortfall, "shortfall"]
+      ];
+
+      els.waterfallChart.innerHTML = steps.map(([label, value, tone]) => `
+        <div class="waterfall-step" data-tip="${label}: ${formatNumber(value)} hours">
+          <div class="waterfall-bar ${tone}" style="height:${Math.max(4, value / maxValue * 210)}px"></div>
+          <div class="waterfall-label">${label}<br>${formatNumber(value)}h</div>
+        </div>
+      `).join("");
+    }
+
+    function renderPareto(rows) {
+      const shortfallRows = rows
+        .filter(row => row.shortfall > 0)
+        .sort(sortRows)
+        .slice(0, 8);
+      const totalShortfall = Math.max(sum(shortfallRows, "shortfall", true), 1);
+
+      els.paretoChart.innerHTML = shortfallRows.map(row => {
+        const contribution = Math.max(Number(row.shortfall || 0), 0) / totalShortfall * 100;
+        return `
+          <div class="pareto-row" data-tip="${escapeHtml(`${row.employeeName || row.employeeId}: ${formatNumber(row.shortfall)}h (${Math.round(contribution)}%)`)}}">
+            <span class="pareto-name" title="${escapeHtml(row.employeeName || row.employeeId)}">${escapeHtml(row.employeeName || row.employeeId)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, contribution)}%; background: linear-gradient(90deg, var(--danger), var(--brand));"></div></div>
+            <strong>${Math.round(contribution)}%</strong>
+          </div>
+        `;
+      }).join("") || `<div class="empty">No shortfall contribution in current view.</div>`;
+    }
+
+    function renderRiskMatrix(rows) {
+      const riskyRows = rows
+        .filter(row => row.shortfall > 0)
+        .sort(sortRows)
+        .slice(0, 18);
+      const maxActual = Math.max(...riskyRows.map(row => Number(row.actualBooked || 0)), 1);
+      const maxShortfall = Math.max(...riskyRows.map(row => Number(row.shortfall || 0)), 1);
+
+      els.riskMatrix.innerHTML = `
+        <span class="matrix-label y">Higher shortfall</span>
+        <span class="matrix-label x">Higher booked hours</span>
+        ${riskyRows.map(row => {
+          const x = Math.max(7, Math.min(93, Number(row.actualBooked || 0) / maxActual * 86 + 7));
+          const y = Math.max(8, Math.min(92, Number(row.shortfall || 0) / maxShortfall * 84 + 8));
+          const size = Math.max(12, Math.min(28, Number(row.shortfall || 0) / maxShortfall * 22 + 8));
+          return `<span class="matrix-dot" style="--x:${x}%; --y:${y}%; --dot-size:${size}px" data-tip="${escapeHtml(`${row.employeeName || row.employeeId} · shortfall ${formatNumber(row.shortfall)}h · booked ${formatNumber(row.actualBooked)}h`)}"></span>`;
+        }).join("")}
+      `;
+    }
+
+    function renderTable(rows) {
+      if (!rows.length) {
+        els.tableBody.innerHTML = `<tr><td colspan="7"><div class="empty">No employees match the current filters.</div></td></tr>`;
+        return;
+      }
+
+      els.tableBody.innerHTML = rows.map(row => `
+        <tr>
+          <td class="id-cell">${escapeHtml(row.employeeId)}</td>
+          <td class="name-cell">${escapeHtml(row.employeeName)}</td>
+          <td class="team-cell">${escapeHtml(row.team)}</td>
+          <td class="num-cell">${formatNumber(row.actualBooked)}</td>
+          <td class="num-cell">${formatNumber(row.expectedBooked)}</td>
+          <td class="num-cell">${formatNumber(row.shortfall)}</td>
+          <td class="status-cell"><span class="status-tag ${statusClass(row.status)}">${escapeHtml(row.status)}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function buildSummaryExport(rows) {
+      const selectedYear = Number(els.yearSelect.value);
+      const selectedMonth = Number(els.monthSelect.value);
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      const actual = sum(rows, "actualBooked");
+      const expected = sum(rows, "expectedBooked");
+      const shortfall = sum(rows, "shortfall", true);
+      const underbooked = rows.filter(row => row.shortfall > 0).length;
+      const overbooked = rows.filter(row => row.shortfall < 0).length;
+      const ok = rows.filter(row => row.shortfall === 0).length;
+      const complianceRate = rows.length ? Math.round(((rows.length - underbooked) / rows.length) * 100) : 0;
+
+      const overviewRows = [
+        { Metric: "Month", Value: monthLabel(selectedYear, selectedMonth) },
+        { Metric: "Sheet", Value: state.currentSheetName || "-" },
+        { Metric: "Mode", Value: state.mode === "detailed" ? "Detailed aggregation" : "Summary comparison" },
+        { Metric: "Working Days", Value: calendar.workingDays },
+        { Metric: "Employees In Current View", Value: rows.length },
+        { Metric: "Actual Booked", Value: Number(actual.toFixed(2)) },
+        { Metric: "Expected Booked", Value: Number(expected.toFixed(2)) },
+        { Metric: "Shortfall Hours", Value: Number(shortfall.toFixed(2)) },
+        { Metric: "Underbooked Employees", Value: underbooked },
+        { Metric: "Overbooked Employees", Value: overbooked },
+        { Metric: "OK Employees", Value: ok },
+        { Metric: "Compliance Rate", Value: `${complianceRate}%` }
+      ];
+
+      const teamRows = Array.from(groupRows(rows, "team").entries()).map(([team, teamRows]) => {
+        const teamUnderbooked = teamRows.filter(row => row.shortfall > 0).length;
+        const teamCompliance = teamRows.length ? Math.round(((teamRows.length - teamUnderbooked) / teamRows.length) * 100) : 0;
+        return {
+          Team: team,
+          Employees: teamRows.length,
+          "Actual Booked": Number(sum(teamRows, "actualBooked").toFixed(2)),
+          "Expected Booked": Number(sum(teamRows, "expectedBooked").toFixed(2)),
+          "Shortfall Hours": Number(sum(teamRows, "shortfall", true).toFixed(2)),
+          Underbooked: teamUnderbooked,
+          Overbooked: teamRows.filter(row => row.shortfall < 0).length,
+          OK: teamRows.filter(row => row.shortfall === 0).length,
+          "Compliance Rate": `${teamCompliance}%`
+        };
+      });
+
+      const statusRows = ["Underbooked", "Overbooked", "OK"].map(status => {
+        const statusRows = rows.filter(row => row.status === status);
+        return {
+          Status: status,
+          Employees: statusRows.length,
+          "Actual Booked": Number(sum(statusRows, "actualBooked").toFixed(2)),
+          "Expected Booked": Number(sum(statusRows, "expectedBooked").toFixed(2)),
+          "Shortfall Hours": Number(sum(statusRows, "shortfall", true).toFixed(2))
+        };
+      });
+
+      const topShortfallRows = rows
+        .filter(row => row.shortfall > 0)
+        .sort(sortRows)
+        .slice(0, 20)
+        .map(row => ({
+          "Employee ID": row.employeeId,
+          "Employee Name": row.employeeName,
+          Team: row.team,
+          "Actual Booked": Number(Number(row.actualBooked || 0).toFixed(2)),
+          "Expected Booked": Number(Number(row.expectedBooked || 0).toFixed(2)),
+          Shortfall: Number(Number(row.shortfall || 0).toFixed(2)),
+          Status: row.status
+        }));
+
+      const detailRows = rows.map(row => ({
+        "Employee ID": row.employeeId,
+        "Employee Name": row.employeeName,
+        Team: row.team,
+        "Actual Booked": Number(Number(row.actualBooked || 0).toFixed(2)),
+        "Expected Booked": Number(Number(row.expectedBooked || 0).toFixed(2)),
+        Shortfall: Number(Number(row.shortfall || 0).toFixed(2)),
+        Status: row.status
+      }));
+
+      return {
+        title: `Timesheet Summary - ${monthLabel(selectedYear, selectedMonth)}`,
+        overviewRows,
+        teamRows,
+        statusRows,
+        topShortfallRows,
+        detailRows
+      };
+    }
+
+    function exportSummaryExcel() {
+      const rows = state.filteredRows;
+      if (!rows.length) {
+        showMessage("error", "No table rows available for summary export.");
+        return;
+      }
+      if (typeof XLSX === "undefined") {
+        showMessage("error", "SheetJS could not be loaded, so Excel export is unavailable.");
+        return;
+      }
+
+      const summary = buildSummaryExport(rows);
+      const book = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(summary.overviewRows), "Summary");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(summary.teamRows), "Team Summary");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(summary.statusRows), "Status Summary");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(summary.topShortfallRows), "Top Shortfall");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(summary.detailRows), "Table Rows");
+      XLSX.writeFile(book, `tata_timesheet_summary_${els.yearSelect.value}_${String(els.monthSelect.value).padStart(2, "0")}.xlsx`);
+      showMessage("success", "Summary Excel downloaded.");
+    }
+
+    function appendPdfTable(doc, title, rows, startY, options = {}) {
+      const forceNewPage = Boolean(options.forceNewPage);
+      let y = Number(startY || 36);
+      const pageHeight = doc.internal.pageSize.getHeight();
+      if (forceNewPage && y > 40) {
+        doc.addPage();
+        y = 36;
+      }
+      if (y > pageHeight - 70) {
+        doc.addPage();
+        y = 36;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(11, 22, 48);
+      doc.text(title, 36, y);
+
+      if (!rows.length) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(95, 110, 126);
+        doc.text("No rows available.", 36, y + 14);
+        return y + 28;
+      }
+
+      const headers = Object.keys(rows[0]);
+      const body = rows.map(row => headers.map(header => safeText(row[header])));
+      const isLargeTable = rows.length > 45;
+
+      doc.autoTable({
+        startY: y + 8,
+        margin: { left: 36, right: 36, top: 36, bottom: 34 },
+        head: [headers],
+        body,
+        showHead: "everyPage",
+        pageBreak: isLargeTable ? "auto" : "avoid",
+        rowPageBreak: "avoid",
+        styles: {
+          font: "helvetica",
+          fontSize: 8,
+          cellPadding: 3.5,
+          overflow: "linebreak",
+          textColor: [23, 32, 42]
+        },
+        headStyles: {
+          fillColor: [11, 22, 48],
+          textColor: [255, 255, 255],
+          fontStyle: "bold"
+        },
+        alternateRowStyles: { fillColor: [244, 247, 251] },
+        tableLineColor: [204, 214, 223],
+        tableLineWidth: 0.2
+      });
+
+      return (doc.lastAutoTable?.finalY || y + 10) + 14;
+    }
+
+    function decoratePdfPages(doc, title) {
+      const pageCount = doc.getNumberOfPages();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      for (let page = 1; page <= pageCount; page++) {
+        doc.setPage(page);
+        doc.setDrawColor(206, 216, 226);
+        doc.line(36, pageHeight - 26, pageWidth - 36, pageHeight - 26);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(90, 103, 118);
+        doc.text("Tata Technologies Timesheet BI Pulse", 36, pageHeight - 14);
+        doc.text(`Page ${page} of ${pageCount}`, pageWidth - 36, pageHeight - 14, { align: "right" });
+
+        if (page > 1) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(11, 22, 48);
+          doc.text(title, 36, 22);
+        }
+      }
+    }
+
+    function exportSummaryPdf() {
+      const rows = state.filteredRows;
+      if (!rows.length) {
+        showMessage("error", "No table rows available for summary PDF.");
+        return;
+      }
+
+      if (typeof window.jspdf === "undefined" || typeof window.jspdf.jsPDF !== "function") {
+        showMessage("error", "PDF engine could not be loaded. Refresh the page and try again.");
+        return;
+      }
+
+      const summary = buildSummaryExport(rows);
+      const jsPDF = window.jspdf.jsPDF;
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "pt",
+        format: "a4",
+        compress: true
+      });
+
+      if (typeof doc.autoTable !== "function") {
+        showMessage("error", "PDF table plugin missing. Refresh the page and try again.");
+        return;
+      }
+
+      let cursorY = 36;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(17);
+      doc.setTextColor(11, 22, 48);
+      doc.text(summary.title, 36, cursorY);
+
+      cursorY += 18;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(70, 84, 99);
+      doc.text(`Tata Technologies Timesheet BI Pulse · Current filtered table summary · Generated ${new Date().toLocaleString()}`, 36, cursorY);
+      cursorY += 16;
+
+      cursorY = appendPdfTable(doc, "Overview", summary.overviewRows, cursorY);
+      cursorY = appendPdfTable(doc, "Team Summary", summary.teamRows, cursorY, { forceNewPage: true });
+      cursorY = appendPdfTable(doc, "Status Summary", summary.statusRows, cursorY, { forceNewPage: true });
+      cursorY = appendPdfTable(doc, "Top Shortfall", summary.topShortfallRows, cursorY, { forceNewPage: true });
+      appendPdfTable(doc, "Current Table Rows", summary.detailRows, cursorY, { forceNewPage: true });
+
+      decoratePdfPages(doc, summary.title);
+
+      const fileName = `tata_timesheet_summary_${els.yearSelect.value}_${String(els.monthSelect.value).padStart(2, "0")}.pdf`;
+      doc.save(fileName);
+      showMessage("success", "Summary PDF downloaded.");
+    }
+
+    function clearView() {
+      state.workbook = null;
+      state.currentSheetName = "";
+      state.currentRows = [];
+      state.mode = "";
+      state.allRows = [];
+      state.filteredRows = [];
+      state.teamMap = new Map();
+      els.fileInput.value = "";
+      els.sheetSelect.innerHTML = `<option value="">Auto Detect Best Sheet</option>`;
+      els.statusFilter.value = "all";
+      els.teamFilter.value = "all";
+      els.searchInput.value = "";
+      syncSearchAnimation();
+      els.excludeLeaveTasks.checked = false;
+      setStatus("No workbook loaded yet.");
+      clearMessage();
+      renderEmpty();
+    }
+
+    els.fileInput.addEventListener("change", event => loadWorkbook(event.target.files[0]));
+
+    ["dragenter", "dragover"].forEach(eventName => {
+      els.dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        els.dropZone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "dragend", "drop"].forEach(eventName => {
+      els.dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        els.dropZone.classList.remove("dragover");
+      });
+    });
+
+    els.dropZone.addEventListener("drop", event => {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) loadWorkbook(file);
+    });
+
+    els.sheetSelect.addEventListener("change", () => {
+      if (!state.workbook) return;
+      selectSheet(els.sheetSelect.value || autoChooseSheet(), "Workbook");
+    });
+    els.analyzeBtn.addEventListener("click", analyzeCurrentSheet);
+    els.clearBtn.addEventListener("click", clearView);
+    els.summaryExcelBtn.addEventListener("click", exportSummaryExcel);
+    els.summaryPdfBtn.addEventListener("click", exportSummaryPdf);
+    els.monthSelect.addEventListener("change", () => { if (state.currentRows.length) analyzeCurrentSheet(); else applyFilters(); });
+    els.yearSelect.addEventListener("change", () => { if (state.currentRows.length) analyzeCurrentSheet(); else applyFilters(); });
+    els.statusFilter.addEventListener("change", applyFilters);
+    els.teamFilter.addEventListener("change", applyFilters);
+    els.searchInput.addEventListener("input", applyFilters);
+    els.excludeLeaveTasks.addEventListener("change", () => { if (state.currentRows.length && state.mode === "detailed") analyzeCurrentSheet(); });
+
+    initControls();
+    initThreeBackdrop();
+    bindScrollBackdropPause();
+    bindChartInteractions();
+    syncSearchAnimation();
+    renderEmpty();
+    loadTransferredPayload();
+  </script>
+</body>
+</html>
+
 
 
