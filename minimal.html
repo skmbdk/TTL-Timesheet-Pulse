@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timesheet BI Dashboard</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --page: #f4f7f8;
+      --panel: #ffffff;
+      --ink: #202124;
+      --muted: #626a73;
+      --line: #dfe5e8;
+      --yellow: #f2c94c;
+      --teal: #00a6a6;
+      --coral: #ef5b5b;
+      --green: #2fbf71;
+      --indigo: #3b5bdb;
+      --graphite: #2f3437;
+      --shadow: 0 16px 42px rgba(43, 51, 56, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Source Sans 3", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(47, 52, 55, 0.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(47, 52, 55, 0.04) 1px, transparent 1px),
+        var(--page);
+      background-size: 28px 28px;
+    }
+
+    .app {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 8px solid var(--yellow);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      font-family: "Manrope", sans-serif;
+      font-size: 26px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .actions, .filters, .view-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn, .input, select {
+      min-height: 40px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 13px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      border-color: #d2aa24;
+      background: var(--yellow);
+      color: #1b1d1f;
+    }
+
+    .btn-dark {
+      border-color: var(--graphite);
+      background: var(--graphite);
+      color: #fff;
+    }
+
+    .input, select {
+      padding: 8px 10px;
+      min-width: 160px;
+    }
+
+    .upload-strip {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .upload-strip input[type="file"] {
+      width: 100%;
+      padding: 9px;
+      border: 1px dashed #aeb8be;
+      border-radius: 8px;
+      background: #fbfcfc;
+      font: inherit;
+    }
+
+    .filters {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .loading-shell {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(120deg, rgba(255, 255, 255, 0.96), rgba(242, 201, 76, 0.14));
+      display: none;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-shell.is-visible {
+      display: flex;
+    }
+
+    .loading-shell::after {
+      content: "";
+      position: absolute;
+      left: -35%;
+      bottom: 0;
+      width: 35%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+      animation: loadingSweep 1.5s ease-in-out infinite;
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #d7dde1;
+      border-top-color: var(--graphite);
+      animation: loadingSpin 0.85s linear infinite;
+      flex: 0 0 auto;
+    }
+
+    .loading-copy {
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .tile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .kpi {
+      min-height: 120px;
+      padding: 14px;
+      border-top: 6px solid var(--yellow);
+    }
+
+    .kpi:nth-child(2) { border-top-color: var(--teal); }
+    .kpi:nth-child(3) { border-top-color: var(--indigo); }
+    .kpi:nth-child(4) { border-top-color: var(--coral); }
+    .kpi:nth-child(5) { border-top-color: var(--green); }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .kpi-value {
+      margin-top: 10px;
+      font-family: "Manrope", sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .kpi-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .tile-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tile-head h2 {
+      font-family: "Manrope", sans-serif;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .tile-body { padding: 14px; }
+
+    .donut-layout {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .donut {
+      width: 180px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--coral) 0deg, var(--coral) 0deg);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    .donut::after {
+      content: attr(data-total);
+      width: 104px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: var(--ink);
+      font-family: "Manrope", sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 14px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .legend-btn {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: #fff;
+      text-align: left;
+      font: inherit;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 13px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 72px;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .bar-group {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .bar-track {
+      height: 18px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #e9eef0;
+    }
+
+    .bar-fill {
+      height: 100%;
+      min-width: 2px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--teal), var(--yellow));
+    }
+
+    .risk-list {
+      display: grid;
+      gap: 8px;
+      max-height: 388px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--coral);
+      border-radius: 8px;
+      background: #fff;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+    }
+
+    .chart-control {
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.16s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .chart-control:hover {
+      border-color: #cfd8dd;
+      background: #fcfdfd;
+    }
+
+    .chart-control:focus-visible {
+      outline: none;
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.18);
+    }
+
+    .chart-control:active {
+      transform: scale(0.995);
+    }
+
+    .chart-control.is-active {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(0, 166, 166, 0.16);
+      background: rgba(0, 166, 166, 0.06);
+    }
+
+    .risk-name {
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .risk-meta {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .risk-hours {
+      font-family: "Manrope", sans-serif;
+      font-weight: 800;
+      color: var(--coral);
+      white-space: nowrap;
+    }
+
+    .table-shell {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfc;
+      flex-wrap: wrap;
+    }
+
+    .table-search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: min(250px, 100%);
+      width: min(380px, 100%);
+      flex: 0 1 380px;
+      max-width: 380px;
+      border-radius: 999px;
+      padding: 1px;
+      background: linear-gradient(120deg, rgba(59, 91, 219, 0.28), rgba(0, 166, 166, 0.2), rgba(242, 201, 76, 0.34));
+      box-shadow: 0 6px 16px rgba(47, 52, 55, 0.1);
+      transition: transform 0.18s ease, box-shadow 0.2s ease;
+      overflow: hidden;
+    }
+
+    .table-search-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: #fff;
+    }
+
+    .table-search-wrap::after {
+      content: "";
+      position: absolute;
+      left: -22%;
+      top: 0;
+      width: 22%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(59, 91, 219, 0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      animation: searchSweep 2.8s linear infinite;
+    }
+
+    .table-search-wrap:focus-within {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(47, 52, 55, 0.15);
+    }
+
+    .table-search-wrap:focus-within::after {
+      opacity: 1;
+    }
+
+    .table-search-icon {
+      position: relative;
+      z-index: 1;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      color: #59636c;
+      flex: 0 0 auto;
+    }
+
+    .table-search {
+      position: relative;
+      z-index: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      min-height: 42px;
+      min-width: 0;
+      width: 100%;
+      padding: 0 8px 0 0;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .table-search::placeholder {
+      color: #7b858d;
+      font-weight: 600;
+    }
+
+    .table-search-clear {
+      position: relative;
+      z-index: 1;
+      border: 0;
+      background: transparent;
+      color: #697179;
+      font: inherit;
+      font-weight: 700;
+      min-height: 42px;
+      padding: 0 14px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, color 0.2s ease;
+    }
+
+    .table-search-wrap.has-value .table-search-clear {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .table-search-clear:hover {
+      color: var(--graphite);
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-export {
+      border-color: #ccd6db;
+      background: #fff;
+      color: #2d3236;
+      min-width: 108px;
+    }
+
+    .btn-export:hover {
+      border-color: #b2c0c8;
+      background: #f8fbfc;
+    }
+
+    .btn-export svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    @keyframes searchSweep {
+      from { transform: translateX(0); }
+      to { transform: translateX(620%); }
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: 430px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #303437;
+      color: #fff;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    th.metric-col,
+    td.metric-col,
+    th.status-col,
+    td.status-col {
+      text-align: center;
+    }
+
+    .status {
+      display: inline-flex;
+      min-width: 94px;
+      justify-content: center;
+      padding: 5px 9px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .status-underbooked { background: #ffe2e2; color: #a72121; }
+    .status-overbooked { background: #fff0c2; color: #7a5a00; }
+    .status-ok { background: #dff6ea; color: #186c40; }
+
+    .notice {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .empty {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    @keyframes loadingSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes loadingSweep {
+      from { transform: translateX(0); }
+      to { transform: translateX(390%); }
+    }
+
+    @media (max-width: 1120px) {
+      .topbar, .upload-strip, .dashboard-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .app { padding: 12px; }
+      h1 { font-size: 22px; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .donut-layout { grid-template-columns: 1fr; }
+      .donut { width: min(180px, 100%); }
+      .bar-row { grid-template-columns: 88px 1fr 58px; }
+      .actions, .filters { align-items: stretch; }
+      .btn, .input, select { width: 100%; }
+      .table-tools { align-items: stretch; }
+      .table-search-wrap { max-width: none; min-width: 100%; }
+      .table-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+      .table-actions .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loading-spinner,
+      .loading-shell::after,
+      .table-search-wrap::after {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>Timesheet BI Dashboard</h1>
+        <p class="subtitle" id="dashboardSubtitle">Load your workbook or open this page from the analyzer.</p>
+      </div>
+      <div class="actions">
+        
+        <button class="btn btn-dark" id="clearBtn">Clear View</button>
+      </div>
+    </header>
+
+    <section class="upload-strip">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+    </section>
+
+    <div class="loading-shell" id="loadingState" aria-live="polite" aria-hidden="true">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span class="loading-copy" id="loadingLabel">Reading workbook and preparing dashboard...</span>
+    </div>
+
+    <section class="filters">
+      <select id="monthSelect"></select>
+      <select id="yearSelect"></select>
+      <select id="statusFilter">
+        <option value="all">All Status</option>
+        <option value="underbooked">Underbooked</option>
+        <option value="ok">OK</option>
+        <option value="overbooked">Overbooked</option>
+      </select>
+      <select id="teamFilter">
+        <option value="all">All Teams</option>
+        <option value="Offshore">Offshore</option>
+        <option value="Onsite">Onsite</option>
+      </select>
+      <label class="btn">
+        <input type="checkbox" id="excludeLeaveTasks" />
+        Exclude leave tasks
+      </label>
+    </section>
+
+    <div class="notice" id="statusText">No data loaded yet.</div>
+
+    <section class="kpi-grid" id="kpiGrid"></section>
+
+    <section class="dashboard-grid">
+      <article class="tile">
+        <div class="tile-head">
+          <h2>Status Distribution</h2>
+          <span id="statusCaption">-</span>
+        </div>
+        <div class="tile-body donut-layout">
+          <div class="donut chart-control" id="statusDonut" data-total="0" role="button" tabindex="0" aria-label="Status chart. Click to cycle status filter."></div>
+          <div class="legend" id="statusLegend"></div>
+        </div>
+      </article>
+
+      <article class="tile">
+        <div class="tile-head">
+          <h2>Highest Shortfall</h2>
+          <span id="riskCaption">Top 8</span>
+        </div>
+        <div class="tile-body">
+          <div class="risk-list" id="riskList"></div>
+        </div>
+      </article>
+
+      <article class="tile">
+        <div class="tile-head">
+          <h2>Team Workload</h2>
+          <span>Actual vs expected</span>
+        </div>
+        <div class="tile-body">
+          <div class="bar-list" id="teamBars"></div>
+        </div>
+      </article>
+
+      <article class="tile">
+        <div class="tile-head">
+          <h2>Shortfall by Team</h2>
+          <span>Underbooked hours</span>
+        </div>
+        <div class="tile-body">
+          <div class="bar-list" id="shortfallBars"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="table-shell">
+      <div class="table-tools">
+        <div class="table-search-wrap" id="tableSearchWrap">
+          <span class="table-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M20 20l-4-4"></path>
+            </svg>
+          </span>
+          <input class="table-search" id="tableSearchInput" type="text" placeholder="Search Employee ID,Employee Name..." />
+          <button type="button" class="table-search-clear" id="tableSearchClearBtn" aria-label="Clear table search">Clear</button>
+        </div>
+        <div class="table-actions">
+          <button class="btn btn-export" id="tableExcelBtn" type="button" title="Download current table as Excel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+              <path d="M14 3v6h6"></path>
+              <path d="M9 10l6 8"></path>
+              <path d="M15 10l-6 8"></path>
+            </svg>
+            Excel
+          </button>
+          <button class="btn btn-export" id="tablePdfBtn" type="button" title="Download current table as PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+              <path d="M14 3v6h6"></path>
+              <path d="M8 15h8"></path>
+              <path d="M8 11h5"></path>
+            </svg>
+            PDF
+          </button>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Employee Name</th>
+              <th>Team</th>
+              <th class="metric-col">Actual Booked</th>
+              <th class="metric-col">Expected Booked</th>
+              <th class="metric-col">Shortfall</th>
+              <th class="status-col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="7"><div class="empty">Open from analyzer or upload a workbook here.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const HOLIDAYS_2026 = [
+      { date: "2026-01-01", name: "New Year Day" },
+      { date: "2026-01-26", name: "Republic Day" },
+      { date: "2026-05-01", name: "Maharashtra Din / May Day / Labour Day / Buddha Pournima" },
+      { date: "2026-08-15", name: "Independence Day" },
+      { date: "2026-09-14", name: "Ganesh Chaturthi / Swarna Gowri Vrata" },
+      { date: "2026-10-02", name: "Mahatma Gandhi Jayanti" },
+      { date: "2026-10-20", name: "Vijaya Dashami / Dussehra" },
+      { date: "2026-11-10", name: "Diwali" },
+      { date: "2026-12-25", name: "Christmas" }
+    ];
+
+    const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const TEAM_HOURS = { Offshore: 9, Onsite: 8 };
+    const DEFAULT_TEAM = "Offshore";
+    const LEAVE_TASKS = ["paid time off", "accumulated paid time off", "leave for contract associate"];
+
+    const state = {
+      workbook: null,
+      currentSheetName: "",
+      currentRows: [],
+      mode: "",
+      allRows: [],
+      filteredRows: [],
+      teamMap: new Map()
+    };
+
+    const els = {
+      fileInput: document.getElementById("fileInput"),
+      clearBtn: document.getElementById("clearBtn"),
+      monthSelect: document.getElementById("monthSelect"),
+      yearSelect: document.getElementById("yearSelect"),
+      statusFilter: document.getElementById("statusFilter"),
+      teamFilter: document.getElementById("teamFilter"),
+      tableSearchWrap: document.getElementById("tableSearchWrap"),
+      tableSearchInput: document.getElementById("tableSearchInput"),
+      tableSearchClearBtn: document.getElementById("tableSearchClearBtn"),
+      tableExcelBtn: document.getElementById("tableExcelBtn"),
+      tablePdfBtn: document.getElementById("tablePdfBtn"),
+      excludeLeaveTasks: document.getElementById("excludeLeaveTasks"),
+      statusText: document.getElementById("statusText"),
+      loadingState: document.getElementById("loadingState"),
+      loadingLabel: document.getElementById("loadingLabel"),
+      dashboardSubtitle: document.getElementById("dashboardSubtitle"),
+      kpiGrid: document.getElementById("kpiGrid"),
+      statusDonut: document.getElementById("statusDonut"),
+      statusLegend: document.getElementById("statusLegend"),
+      statusCaption: document.getElementById("statusCaption"),
+      riskList: document.getElementById("riskList"),
+      teamBars: document.getElementById("teamBars"),
+      shortfallBars: document.getElementById("shortfallBars"),
+      tableBody: document.getElementById("tableBody")
+    };
+
+    function initControls() {
+      els.monthSelect.innerHTML = MONTH_NAMES.map((name, index) => `<option value="${index + 1}" ${index === 3 ? "selected" : ""}>${name}</option>`).join("");
+      els.yearSelect.innerHTML = `<option value="2026" selected>2026</option>`;
+    }
+
+    function nextPaint() {
+      return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    function setLoading(isLoading, message = "Reading workbook and preparing dashboard...") {
+      if (isLoading) els.loadingLabel.textContent = message;
+      els.loadingState.classList.toggle("is-visible", isLoading);
+      els.loadingState.setAttribute("aria-hidden", String(!isLoading));
+    }
+
+    function safeText(value) {
+      return value == null ? "" : String(value).trim();
+    }
+
+    function normalizeText(value) {
+      return safeText(value).toLowerCase().replace(/\s+/g, " ");
+    }
+
+    function escapeHtml(value) {
+      return safeText(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatNumber(value) {
+      const num = Number(value || 0);
+      return Number.isInteger(num) ? String(num) : num.toFixed(2);
+    }
+
+    function parseExcelDate(value) {
+      if (value == null || value === "") return null;
+      if (value instanceof Date && !isNaN(value.getTime())) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      if (typeof value === "number" && typeof XLSX !== "undefined") {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) return new Date(parsed.y, parsed.m - 1, parsed.d);
+      }
+
+      const raw = safeText(value);
+      if (!raw) return null;
+      const direct = new Date(raw);
+      if (!isNaN(direct.getTime())) return new Date(direct.getFullYear(), direct.getMonth(), direct.getDate());
+
+      let match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+      if (match) {
+        const months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+        const mon = months[match[2].toLowerCase()];
+        if (mon >= 0) return new Date(Number(match[3]), mon, Number(match[1]));
+      }
+
+      match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+      if (match) return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+      return null;
+    }
+
+    function isoDate(dateObj) {
+      return [dateObj.getFullYear(), String(dateObj.getMonth() + 1).padStart(2, "0"), String(dateObj.getDate()).padStart(2, "0")].join("-");
+    }
+
+    function monthKey(dateObj) {
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function monthLabel(year, month) {
+      return `${MONTH_NAMES[month - 1]} ${year}`;
+    }
+
+    function holidayInfo(year, month) {
+      const totalDays = new Date(year, month, 0).getDate();
+      const holidaySet = new Set(HOLIDAYS_2026.map(item => item.date));
+      let weekendDays = 0;
+      let weekdayHolidays = 0;
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dateObj = new Date(year, month - 1, day);
+        const dayIndex = dateObj.getDay();
+        if (dayIndex === 0 || dayIndex === 6) weekendDays++;
+        else if (holidaySet.has(isoDate(dateObj))) weekdayHolidays++;
+      }
+
+      return {
+        totalDays,
+        weekendDays,
+        weekdayHolidays,
+        workingDays: totalDays - weekendDays - weekdayHolidays
+      };
+    }
+
+    function getCell(row, options) {
+      const keys = Object.keys(row || {});
+      for (const key of keys) {
+        const normalizedKey = normalizeText(key);
+        for (const option of options) {
+          if (normalizedKey === normalizeText(option)) return row[key];
+        }
+      }
+      return undefined;
+    }
+
+    function normalizeTeam(value, fallback) {
+      const text = normalizeText(value);
+      if (text.includes("offshore")) return "Offshore";
+      if (text.includes("onsite") || text.includes("on site")) return "Onsite";
+      return fallback;
+    }
+
+    function getExplicitTeam(row) {
+      return normalizeTeam(getCell(row, ["Location", "Team", "Work Location", "Employee Location"]), "");
+    }
+
+    function employeeLookupKeys(employeeId, employeeName) {
+      const id = normalizeText(employeeId);
+      const name = normalizeText(employeeName);
+      const keys = [];
+      if (id && name) keys.push(`idname:${id}||${name}`);
+      if (id) keys.push(`id:${id}`);
+      if (name) keys.push(`name:${name}`);
+      return keys;
+    }
+
+    function chooseTeamFromVotes(votes) {
+      if (!votes) return "";
+      const offshoreVotes = Number(votes.Offshore || 0);
+      const onsiteVotes = Number(votes.Onsite || 0);
+      if (offshoreVotes === 0 && onsiteVotes === 0) return "";
+      return offshoreVotes >= onsiteVotes ? "Offshore" : "Onsite";
+    }
+
+    function addTeamVote(map, key, team) {
+      if (!key || !team) return;
+      if (!map.has(key)) map.set(key, { Offshore: 0, Onsite: 0 });
+      map.get(key)[team] += 1;
+    }
+
+    function sheetRows(sheetName) {
+      const sheet = state.workbook?.Sheets?.[sheetName];
+      if (!sheet) return [];
+      return XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    }
+
+    function buildWorkbookTeamMap() {
+      const map = new Map();
+      if (!state.workbook) return map;
+
+      state.workbook.SheetNames.forEach(sheetName => {
+        sheetRows(sheetName).forEach(row => {
+          const employeeId = safeText(getCell(row, ["Employee ID", "Emp ID", "EmployeeId"]));
+          const employeeName = safeText(getCell(row, ["Employee Name", "Emp Name", "Name"]));
+          const explicitTeam = getExplicitTeam(row);
+          if ((!employeeId && !employeeName) || !explicitTeam) return;
+          employeeLookupKeys(employeeId, employeeName).forEach(key => addTeamVote(map, key, explicitTeam));
+        });
+      });
+
+      return map;
+    }
+
+    function lookupMappedTeam(employeeId, employeeName) {
+      for (const key of employeeLookupKeys(employeeId, employeeName)) {
+        const team = chooseTeamFromVotes(state.teamMap.get(key));
+        if (team) return team;
+      }
+      return "";
+    }
+
+    function resolveEmployeeTeam(row, fallback, employeeId, employeeName) {
+      return getExplicitTeam(row) || lookupMappedTeam(employeeId, employeeName) || fallback;
+    }
+
+    function detectSheetMode(rows) {
+      if (!rows.length) return { mode: "unknown", missing: ["No rows found"] };
+      const first = rows[0];
+      const hasEmployee = getCell(first, ["Employee ID", "Emp ID", "EmployeeId"]) !== undefined;
+      const hasName = getCell(first, ["Employee Name", "Emp Name", "Name"]) !== undefined;
+      const hasSummaryBooked = getCell(first, ["Sum of Total Booked", "Total Booked", "Booked Hours"]) !== undefined;
+      const hasDate = getCell(first, ["Date", "Booking Date", "Work Date"]) !== undefined;
+
+      if (hasEmployee && hasName && hasDate && hasSummaryBooked) return { mode: "detailed", missing: [] };
+      if (hasEmployee && hasName && hasSummaryBooked) return { mode: "summary", missing: [] };
+
+      const missing = [];
+      if (!hasEmployee) missing.push("Employee ID");
+      if (!hasName) missing.push("Employee Name");
+      if (!hasSummaryBooked) missing.push("Sum of Total Booked / Total Booked");
+      return { mode: "unknown", missing };
+    }
+
+    function autoChooseSheet() {
+      if (!state.workbook) return "";
+      const current = safeText(state.currentSheetName);
+      if (current && state.workbook.Sheets[current]) return current;
+
+      const preferred = state.workbook.SheetNames.find(name => normalizeText(name) === "timesheetdata");
+      if (preferred) return preferred;
+
+      let best = "";
+      let bestScore = -1;
+      for (const name of state.workbook.SheetNames) {
+        const info = detectSheetMode(sheetRows(name));
+        const score = info.mode === "detailed" ? 3 : info.mode === "summary" ? 2 : 0;
+        if (score > bestScore) {
+          bestScore = score;
+          best = name;
+        }
+      }
+      return best || state.workbook.SheetNames[0] || "";
+    }
+
+    function populateMonthsFromRows(rows) {
+      const months = new Set();
+      rows.forEach(row => {
+        const d = parseExcelDate(getCell(row, ["Date", "Booking Date", "Work Date"]));
+        if (d) months.add(monthKey(d));
+      });
+
+      if (months.size === 1) {
+        const [year, month] = Array.from(months)[0].split("-").map(Number);
+        els.yearSelect.value = String(year);
+        els.monthSelect.value = String(month);
+      }
+    }
+
+    function shouldExcludeLeave(row) {
+      const task = normalizeText(getCell(row, ["Task", "Task Name", "Project Task", "Work Item", "Entry Type"]));
+      return LEAVE_TASKS.includes(task);
+    }
+
+    function getStatus(shortfall) {
+      if (shortfall > 0) return "Underbooked";
+      if (shortfall < 0) return "Overbooked";
+      return "OK";
+    }
+
+    function sortRows(a, b) {
+      if (b.shortfall !== a.shortfall) return b.shortfall - a.shortfall;
+      return safeText(a.employeeName).localeCompare(safeText(b.employeeName));
+    }
+
+    function summaryModeRows(rows, selectedYear, selectedMonth) {
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      return rows.map(row => {
+        const employeeId = safeText(getCell(row, ["Employee ID", "Emp ID", "EmployeeId"]));
+        const employeeName = safeText(getCell(row, ["Employee Name", "Emp Name", "Name"]));
+        const actualBooked = Number(getCell(row, ["Sum of Total Booked", "Total Booked", "Booked Hours"]) || 0);
+        if (!employeeId && !employeeName) return null;
+        if (normalizeText(employeeName) === "grand total") return null;
+
+        const team = resolveEmployeeTeam(row, DEFAULT_TEAM, employeeId, employeeName);
+        const expectedBooked = (TEAM_HOURS[team] || TEAM_HOURS[DEFAULT_TEAM]) * calendar.workingDays;
+        const shortfall = expectedBooked - actualBooked;
+        return { employeeId, employeeName, team, actualBooked, expectedBooked, shortfall, status: getStatus(shortfall) };
+      }).filter(Boolean).sort(sortRows);
+    }
+
+    function detailedModeRows(rows, selectedYear, selectedMonth) {
+      const calendar = holidayInfo(selectedYear, selectedMonth);
+      const summary = new Map();
+
+      rows.forEach(row => {
+        const dateObj = parseExcelDate(getCell(row, ["Date", "Booking Date", "Work Date"]));
+        if (!dateObj) return;
+        if (dateObj.getFullYear() !== selectedYear || dateObj.getMonth() + 1 !== selectedMonth) return;
+        if (els.excludeLeaveTasks.checked && shouldExcludeLeave(row)) return;
+
+        const employeeId = safeText(getCell(row, ["Employee ID", "Emp ID", "EmployeeId"]));
+        const employeeName = safeText(getCell(row, ["Employee Name", "Emp Name", "Name"]));
+        const booked = Number(getCell(row, ["Total Booked", "Booked Hours", "Sum of Total Booked"]) || 0);
+        const explicitTeam = getExplicitTeam(row);
+        if (!employeeId && !employeeName) return;
+
+        const key = `${employeeId}||${employeeName}`;
+        if (!summary.has(key)) summary.set(key, { employeeId, employeeName, actualBooked: 0, teamVotes: { Offshore: 0, Onsite: 0 } });
+        const item = summary.get(key);
+        item.actualBooked += booked;
+        if (explicitTeam) item.teamVotes[explicitTeam] += 1;
+      });
+
+      return Array.from(summary.values()).map(item => {
+        const team = chooseTeamFromVotes(item.teamVotes) || lookupMappedTeam(item.employeeId, item.employeeName) || DEFAULT_TEAM;
+        const expectedBooked = (TEAM_HOURS[team] || TEAM_HOURS[DEFAULT_TEAM]) * calendar.workingDays;
+        const shortfall = expectedBooked - item.actualBooked;
+        return { employeeId: item.employeeId, employeeName: item.employeeName, team, actualBooked: item.actualBooked, expectedBooked, shortfall, status: getStatus(shortfall) };
+      }).sort(sortRows);
+    }
+
+    function readWorkbook(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = event => {
+          try {
+            const data = new Uint8Array(event.target.result);
+            resolve(XLSX.read(data, { type: "array" }));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("File read failed."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function loadWorkbook(file) {
+      if (!file) return;
+      if (typeof XLSX === "undefined") {
+        els.statusText.textContent = "SheetJS could not be loaded. Use internet access or a local XLSX script.";
+        return;
+      }
+
+      setLoading(true, "Reading workbook and preparing dashboard...");
+      try {
+        els.statusText.textContent = "Reading workbook...";
+        await nextPaint();
+        state.workbook = await readWorkbook(file);
+        els.statusText.textContent = "Processing rows and preparing visuals...";
+        await nextPaint();
+        state.teamMap = buildWorkbookTeamMap();
+        const chosen = autoChooseSheet();
+        selectSheet(chosen, file.name);
+      } catch (error) {
+        console.error(error);
+        els.statusText.textContent = "Failed to read workbook. Please upload a valid .xlsx, .xls, or .csv file.";
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function selectSheet(sheetName, fileName = "Workbook") {
+      if (!state.workbook || !sheetName) return;
+      const rows = sheetRows(sheetName);
+      const info = detectSheetMode(rows);
+      state.currentSheetName = sheetName;
+      state.currentRows = rows;
+      state.mode = info.mode;
+
+      if (info.mode === "unknown") {
+        els.statusText.textContent = `Unsupported sheet. Missing columns: ${info.missing.join(", ")}.`;
+        return;
+      }
+
+      populateMonthsFromRows(rows);
+      els.statusText.textContent = `Loaded ${fileName}. Sheet ${sheetName}, ${info.mode} mode, ${rows.length} source rows.`;
+      analyzeCurrentSheet();
+    }
+
+    function analyzeCurrentSheet() {
+      if (!state.currentRows.length) {
+        els.statusText.textContent = "Upload a workbook or open this page from the analyzer.";
+        return;
+      }
+
+      const selectedYear = Number(els.yearSelect.value);
+      const selectedMonth = Number(els.monthSelect.value);
+      state.allRows = state.mode === "detailed"
+        ? detailedModeRows(state.currentRows, selectedYear, selectedMonth)
+        : summaryModeRows(state.currentRows, selectedYear, selectedMonth);
+
+      els.dashboardSubtitle.textContent = `${monthLabel(selectedYear, selectedMonth)} from ${state.currentSheetName || "uploaded workbook"}`;
+      applyFilters();
+    }
+
+    function loadTransferredPayload() {
+      const raw = localStorage.getItem("timesheetPowerBiPayload");
+      if (!raw) return false;
+
+      try {
+        const payload = JSON.parse(raw);
+        state.allRows = Array.isArray(payload.rows) ? payload.rows : [];
+        if (!state.allRows.length) return false;
+        state.currentSheetName = payload.sourceSheet || "Analyzer result";
+        state.mode = payload.mode || "summary";
+        if (payload.month) els.monthSelect.value = String(payload.month);
+        if (payload.year) els.yearSelect.value = String(payload.year);
+        els.dashboardSubtitle.textContent = `${monthLabel(Number(els.yearSelect.value), Number(els.monthSelect.value))} from ${state.currentSheetName}`;
+        els.statusText.textContent = `Loaded ${state.allRows.length} analyzed employees from the analyzer page.`;
+        applyFilters();
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    function filteredRows() {
+      const status = els.statusFilter.value;
+      const team = els.teamFilter.value;
+
+      return state.allRows.filter(row => {
+        if (status === "underbooked" && row.shortfall <= 0) return false;
+        if (status === "ok" && row.shortfall !== 0) return false;
+        if (status === "overbooked" && row.shortfall >= 0) return false;
+        if (team !== "all" && row.team !== team) return false;
+        return true;
+      });
+    }
+
+    function statusClass(status) {
+      if (status === "Underbooked") return "status-underbooked";
+      if (status === "Overbooked") return "status-overbooked";
+      return "status-ok";
+    }
+
+    function statusFilterLabel(value) {
+      if (value === "underbooked") return "Underbooked";
+      if (value === "overbooked") return "Overbooked";
+      if (value === "ok") return "OK";
+      return "All";
+    }
+
+    function toggleSelectFilter(selectEl, nextValue, defaultValue = "all") {
+      selectEl.value = selectEl.value === nextValue ? defaultValue : nextValue;
+      applyFilters();
+    }
+
+    function applySearchFilter(nextValue) {
+      const current = normalizeText(els.tableSearchInput.value);
+      const target = normalizeText(nextValue);
+      els.tableSearchInput.value = current === target ? "" : nextValue;
+      applyTableSearch();
+    }
+
+    function handleChartControl(control) {
+      const statusFilter = safeText(control.dataset.statusFilter);
+      const teamFilter = safeText(control.dataset.teamFilter);
+      const searchFilter = safeText(control.dataset.searchFilter);
+
+      if (statusFilter) {
+        toggleSelectFilter(els.statusFilter, statusFilter);
+        return;
+      }
+      if (teamFilter) {
+        toggleSelectFilter(els.teamFilter, teamFilter);
+        return;
+      }
+      if (searchFilter) {
+        applySearchFilter(searchFilter);
+      }
+    }
+
+    function bindChartInteractivity(container) {
+      if (!container) return;
+      const selector = "[data-status-filter], [data-team-filter], [data-search-filter]";
+      container.addEventListener("click", event => {
+        const control = event.target.closest(selector);
+        if (!control || !container.contains(control)) return;
+        handleChartControl(control);
+      });
+      container.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const control = event.target.closest(selector);
+        if (!control || !container.contains(control)) return;
+        event.preventDefault();
+        handleChartControl(control);
+      });
+    }
+
+    function cycleStatusFilter() {
+      const order = ["all", "underbooked", "ok", "overbooked"];
+      const index = Math.max(order.indexOf(els.statusFilter.value), 0);
+      const next = order[(index + 1) % order.length];
+      els.statusFilter.value = next;
+      applyFilters();
+    }
+
+    function applyFilters() {
+      state.filteredRows = filteredRows();
+      renderDashboard();
+    }
+
+    function tableSearchedRows(rows) {
+      const search = normalizeText(els.tableSearchInput.value);
+      if (!search) return rows;
+      return rows.filter(row => normalizeText([row.employeeId, row.employeeName, row.team, row.status].join(" ")).includes(search));
+    }
+
+    function syncTableSearchUI() {
+      const hasValue = Boolean(normalizeText(els.tableSearchInput.value));
+      els.tableSearchWrap.classList.toggle("has-value", hasValue);
+    }
+
+    function applyTableSearch() {
+      const rows = tableSearchedRows(state.filteredRows);
+      renderTable(rows);
+      renderRiskList(state.filteredRows);
+      syncTableSearchUI();
+    }
+
+    function currentTableRows() {
+      return tableSearchedRows(state.filteredRows);
+    }
+
+    function exportFileStamp() {
+      return `${els.yearSelect.value}_${String(els.monthSelect.value).padStart(2, "0")}`;
+    }
+
+    function exportTableExcel() {
+      const rows = currentTableRows();
+      if (!rows.length) {
+        els.statusText.textContent = "No table rows available for Excel export.";
+        return;
+      }
+      if (typeof XLSX === "undefined") {
+        els.statusText.textContent = "SheetJS could not be loaded, so Excel export is unavailable.";
+        return;
+      }
+
+      const sheetRows = rows.map(row => ({
+        "Employee ID": safeText(row.employeeId),
+        "Employee Name": safeText(row.employeeName),
+        "Team": safeText(row.team),
+        "Actual Booked": Number(row.actualBooked || 0),
+        "Expected Booked": Number(row.expectedBooked || 0),
+        "Shortfall": Number(row.shortfall || 0),
+        "Status": safeText(row.status)
+      }));
+      const sheet = XLSX.utils.json_to_sheet(sheetRows);
+      const book = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book, sheet, "Timesheet");
+      XLSX.writeFile(book, `timesheet_table_${exportFileStamp()}.xlsx`);
+      els.statusText.textContent = `Excel downloaded with ${rows.length} visible rows.`;
+    }
+
+    function exportTablePdf() {
+      const rows = currentTableRows();
+      if (!rows.length) {
+        els.statusText.textContent = "No table rows available for PDF export.";
+        return;
+      }
+      if (typeof window.jspdf === "undefined" || typeof window.jspdf.jsPDF !== "function") {
+        els.statusText.textContent = "jsPDF could not be loaded, so PDF export is unavailable.";
+        return;
+      }
+
+      const jsPDF = window.jspdf.jsPDF;
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      if (typeof doc.autoTable !== "function") {
+        els.statusText.textContent = "PDF table export plugin is missing.";
+        return;
+      }
+
+      const period = monthLabel(Number(els.yearSelect.value), Number(els.monthSelect.value));
+      doc.setFontSize(14);
+      doc.text(`Timesheet Table - ${period}`, 28, 30);
+      doc.autoTable({
+        startY: 42,
+        head: [["Employee ID", "Employee Name", "Team", "Actual Booked", "Expected Booked", "Shortfall", "Status"]],
+        body: rows.map(row => [
+          safeText(row.employeeId),
+          safeText(row.employeeName),
+          safeText(row.team),
+          formatNumber(row.actualBooked),
+          formatNumber(row.expectedBooked),
+          formatNumber(row.shortfall),
+          safeText(row.status)
+        ]),
+        styles: { fontSize: 9, cellPadding: 5, textColor: [32, 33, 36] },
+        headStyles: { fillColor: [47, 52, 55], textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [246, 249, 250] },
+        margin: { left: 20, right: 20 }
+      });
+      doc.save(`timesheet_table_${exportFileStamp()}.pdf`);
+      els.statusText.textContent = `PDF downloaded with ${rows.length} visible rows.`;
+    }
+
+    function sum(rows, key, positiveOnly = false) {
+      return rows.reduce((total, row) => {
+        const value = Number(row[key] || 0);
+        return total + (positiveOnly ? Math.max(value, 0) : value);
+      }, 0);
+    }
+
+    function groupRows(rows, key) {
+      return rows.reduce((map, row) => {
+        const group = row[key] || "Unknown";
+        if (!map.has(group)) map.set(group, []);
+        map.get(group).push(row);
+        return map;
+      }, new Map());
+    }
+
+    function renderDashboard() {
+      const rows = state.filteredRows;
+      const allRows = state.allRows;
+      if (!allRows.length) {
+        renderEmpty();
+        return;
+      }
+
+      const actual = sum(rows, "actualBooked");
+      const expected = sum(rows, "expectedBooked");
+      const shortfall = sum(rows, "shortfall", true);
+      const underbooked = rows.filter(row => row.shortfall > 0).length;
+      const complianceRate = rows.length ? Math.round(((rows.length - underbooked) / rows.length) * 100) : 0;
+
+      els.kpiGrid.innerHTML = [
+        ["Employees", rows.length, `${allRows.length} total analyzed`],
+        ["Actual Hours", formatNumber(actual), "Booked in current view"],
+        ["Expected Hours", formatNumber(expected), "Target hours for selection"],
+        ["Shortfall Hours", formatNumber(shortfall), `${underbooked} employees need attention`],
+        ["Compliance Rate", `${complianceRate}%`, "OK or overbooked employees"]
+      ].map(([label, value, note]) => `
+        <article class="tile kpi">
+          <div class="kpi-label">${label}</div>
+          <div class="kpi-value">${value}</div>
+          <div class="kpi-note">${note}</div>
+        </article>
+      `).join("");
+
+      renderStatusDonut(rows);
+      renderTeamBars(rows);
+      renderShortfallBars(rows);
+      renderRiskList(rows);
+      renderTable(tableSearchedRows(rows));
+      els.statusText.textContent = `${rows.length} employees visible. ${underbooked} underbooked. ${formatNumber(shortfall)} shortfall hours.`;
+    }
+
+    function renderEmpty() {
+      els.kpiGrid.innerHTML = "";
+      els.statusDonut.style.background = "conic-gradient(#dfe5e8 0deg, #dfe5e8 360deg)";
+      els.statusDonut.dataset.total = "0";
+      els.statusLegend.innerHTML = "";
+      els.teamBars.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.shortfallBars.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.riskList.innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      els.tableBody.innerHTML = `<tr><td colspan="7"><div class="empty">Open from analyzer or upload a workbook here.</div></td></tr>`;
+    }
+
+    function renderStatusDonut(rows) {
+      const counts = {
+        Underbooked: rows.filter(row => row.status === "Underbooked").length,
+        Overbooked: rows.filter(row => row.status === "Overbooked").length,
+        OK: rows.filter(row => row.status === "OK").length
+      };
+      const statusFilterMap = { Underbooked: "underbooked", Overbooked: "overbooked", OK: "ok" };
+      const activeStatusFilter = els.statusFilter.value;
+      const total = Math.max(rows.length, 1);
+      const underDeg = counts.Underbooked / total * 360;
+      const overDeg = counts.Overbooked / total * 360;
+      const okDeg = counts.OK / total * 360;
+
+      els.statusDonut.dataset.total = String(rows.length);
+      els.statusDonut.title = `Current status filter: ${statusFilterLabel(activeStatusFilter)}. Click to cycle status filter.`;
+      els.statusDonut.setAttribute("aria-label", `Status chart. Current filter ${statusFilterLabel(activeStatusFilter)}. Click to cycle status filter.`);
+      els.statusDonut.style.background = `conic-gradient(var(--coral) 0deg ${underDeg}deg, var(--yellow) ${underDeg}deg ${underDeg + overDeg}deg, var(--green) ${underDeg + overDeg}deg ${underDeg + overDeg + okDeg}deg, #dfe5e8 ${underDeg + overDeg + okDeg}deg 360deg)`;
+      els.statusCaption.textContent = `${counts.Underbooked} underbooked`;
+      els.statusLegend.innerHTML = [
+        ["Underbooked", counts.Underbooked, "var(--coral)"],
+        ["Overbooked", counts.Overbooked, "var(--yellow)"],
+        ["OK", counts.OK, "var(--green)"]
+      ].map(([label, count, color]) => `
+        <button type="button" class="legend-row legend-btn chart-control ${activeStatusFilter === statusFilterMap[label] ? "is-active" : ""}" data-status-filter="${statusFilterMap[label]}" aria-pressed="${activeStatusFilter === statusFilterMap[label] ? "true" : "false"}" title="Filter by ${label}">
+          <span class="swatch" style="background:${color}"></span>
+          <span>${label}</span>
+          <strong>${count}</strong>
+        </button>
+      `).join("");
+    }
+
+    function renderTeamBars(rows) {
+      const groups = groupRows(rows, "team");
+      const activeTeam = els.teamFilter.value;
+      const items = Array.from(groups.entries()).map(([team, teamRows]) => ({
+        label: team,
+        actual: sum(teamRows, "actualBooked"),
+        expected: sum(teamRows, "expectedBooked")
+      }));
+      const maxValue = Math.max(...items.map(item => Math.max(item.actual, item.expected)), 1);
+
+      els.teamBars.innerHTML = items.map(item => `
+        <div class="bar-group chart-control ${activeTeam === item.label ? "is-active" : ""}" role="button" tabindex="0" data-team-filter="${escapeHtml(item.label)}" title="Filter team: ${escapeHtml(item.label)}">
+          <div class="bar-row">
+            <span>${escapeHtml(item.label)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.actual / maxValue * 100)}%"></div></div>
+            <strong>${formatNumber(item.actual)}</strong>
+          </div>
+          <div class="bar-row">
+            <span>Expected</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.expected / maxValue * 100)}%; background: var(--indigo);"></div></div>
+            <strong>${formatNumber(item.expected)}</strong>
+          </div>
+        </div>
+      `).join("") || `<div class="empty">No rows in current view.</div>`;
+    }
+
+    function renderShortfallBars(rows) {
+      const groups = groupRows(rows, "team");
+      const activeTeam = els.teamFilter.value;
+      const items = Array.from(groups.entries()).map(([team, teamRows]) => ({
+        label: team,
+        shortfall: sum(teamRows, "shortfall", true)
+      }));
+      const maxValue = Math.max(...items.map(item => item.shortfall), 1);
+
+      els.shortfallBars.innerHTML = items.map(item => `
+        <div class="bar-group chart-control ${activeTeam === item.label ? "is-active" : ""}" role="button" tabindex="0" data-team-filter="${escapeHtml(item.label)}" title="Filter team: ${escapeHtml(item.label)}">
+          <div class="bar-row">
+            <span>${escapeHtml(item.label)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, item.shortfall / maxValue * 100)}%; background: linear-gradient(90deg, var(--coral), var(--yellow));"></div></div>
+            <strong>${formatNumber(item.shortfall)}</strong>
+          </div>
+        </div>
+      `).join("") || `<div class="empty">No rows in current view.</div>`;
+    }
+
+    function renderRiskList(rows) {
+      const activeSearch = normalizeText(els.tableSearchInput.value);
+      const topRows = rows.filter(row => row.shortfall > 0).sort(sortRows).slice(0, 8);
+      els.riskList.innerHTML = topRows.map(row => `
+        <button type="button" class="risk-item chart-control ${activeSearch === normalizeText(row.employeeId || row.employeeName) ? "is-active" : ""}" data-search-filter="${escapeHtml(row.employeeId || row.employeeName)}" title="Filter by employee ${escapeHtml(row.employeeName || row.employeeId)}">
+          <div>
+            <div class="risk-name">${escapeHtml(row.employeeName || row.employeeId)}</div>
+            <div class="risk-meta">${escapeHtml(row.employeeId)} / ${escapeHtml(row.team)} / actual ${formatNumber(row.actualBooked)} of ${formatNumber(row.expectedBooked)}</div>
+          </div>
+          <div class="risk-hours">${formatNumber(row.shortfall)} hrs</div>
+        </button>
+      `).join("") || `<div class="empty">No underbooked employees in current view.</div>`;
+    }
+
+    function renderTable(rows) {
+      if (!rows.length) {
+        els.tableBody.innerHTML = `<tr><td colspan="7"><div class="empty">No employees match the current filters.</div></td></tr>`;
+        return;
+      }
+
+      els.tableBody.innerHTML = rows.map(row => `
+        <tr>
+          <td>${escapeHtml(row.employeeId)}</td>
+          <td>${escapeHtml(row.employeeName)}</td>
+          <td>${escapeHtml(row.team)}</td>
+          <td class="metric-col">${formatNumber(row.actualBooked)}</td>
+          <td class="metric-col">${formatNumber(row.expectedBooked)}</td>
+          <td class="metric-col">${formatNumber(row.shortfall)}</td>
+          <td class="status-col"><span class="status ${statusClass(row.status)}">${escapeHtml(row.status)}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function clearView() {
+      state.workbook = null;
+      state.currentSheetName = "";
+      state.currentRows = [];
+      state.mode = "";
+      state.allRows = [];
+      state.filteredRows = [];
+      state.teamMap = new Map();
+      localStorage.removeItem("timesheetPowerBiPayload");
+      els.fileInput.value = "";
+      els.statusFilter.value = "all";
+      els.teamFilter.value = "all";
+      els.tableSearchInput.value = "";
+      syncTableSearchUI();
+      setLoading(false);
+      els.statusText.textContent = "No data loaded yet.";
+      els.dashboardSubtitle.textContent = "Load your workbook or open this page from the analyzer.";
+      renderEmpty();
+    }
+
+    els.fileInput.addEventListener("change", event => loadWorkbook(event.target.files[0]));
+    els.clearBtn.addEventListener("click", clearView);
+    els.monthSelect.addEventListener("change", () => { if (state.currentRows.length) analyzeCurrentSheet(); else applyFilters(); });
+    els.yearSelect.addEventListener("change", () => { if (state.currentRows.length) analyzeCurrentSheet(); else applyFilters(); });
+    els.statusFilter.addEventListener("change", applyFilters);
+    els.teamFilter.addEventListener("change", applyFilters);
+    els.tableSearchInput.addEventListener("input", applyTableSearch);
+    els.tableSearchClearBtn.addEventListener("click", () => {
+      els.tableSearchInput.value = "";
+      applyTableSearch();
+      els.tableSearchInput.focus();
+    });
+    els.tableExcelBtn.addEventListener("click", exportTableExcel);
+    els.tablePdfBtn.addEventListener("click", exportTablePdf);
+    els.excludeLeaveTasks.addEventListener("change", () => { if (state.currentRows.length && state.mode === "detailed") analyzeCurrentSheet(); });
+    bindChartInteractivity(els.statusLegend);
+    bindChartInteractivity(els.teamBars);
+    bindChartInteractivity(els.shortfallBars);
+    bindChartInteractivity(els.riskList);
+    els.statusDonut.addEventListener("click", cycleStatusFilter);
+    els.statusDonut.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      cycleStatusFilter();
+    });
+
+    initControls();
+    syncTableSearchUI();
+    renderEmpty();
+    loadTransferredPayload();
+  </script>
+</body>
+</html>
